@@ -119,6 +119,10 @@ create table events (
   name text not null,
   date date,
   event_type text,
+  location text,
+  attendee_count integer,
+  notes text,
+  key_people text,
   created_at timestamp default now()
 );
 
@@ -143,6 +147,23 @@ create table posts (
   created_at timestamp default now()
 );
 ```
+
+Then either disable RLS (hackathon simple) **or** add policies that let logged-in users read:
+
+```sql
+-- Option A — simplest, RLS off
+alter table events disable row level security;
+alter table photos disable row level security;
+alter table posts  disable row level security;
+
+-- Option B — RLS on, with policies for authenticated users
+create policy "auth read events"         on events  for select to authenticated using (true);
+create policy "auth read photos"         on photos  for select to authenticated using (true);
+create policy "auth read posts"          on posts   for select to authenticated using (true);
+create policy "auth update photo notes"  on photos  for update to authenticated using (true) with check (true);
+```
+
+Then under **Authentication → URL Configuration**, add `http://localhost:3000/auth/callback` to the allowed redirect URLs.
 
 ### 4. Set up Google OAuth
 

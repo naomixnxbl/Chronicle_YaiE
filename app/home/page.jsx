@@ -56,7 +56,6 @@ export default function HomePage() {
   function handlePromptSubmit(e) {
     e.preventDefault();
     // TODO: wire up to post-drafting flow
-    console.log('Prompt submitted:', prompt);
   }
 
   return (
