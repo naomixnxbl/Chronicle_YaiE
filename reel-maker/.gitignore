@@ -1,0 +1,7 @@
+node_modules/
+.env
+out/
+public/uploads/
+public/music/*
+!public/music/README.txt
+.DS_Store

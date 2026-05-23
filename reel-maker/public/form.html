@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WSTI Reel Maker</title>
+    <style>
+      :root {
+        --bg: #0b121f;
+        --panel: #111a2b;
+        --panel2: #16223a;
+        --line: #243149;
+        --text: #eaf0f7;
+        --muted: #8aa0bd;
+        --accent: #3bcb97;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: radial-gradient(120% 90% at 50% -10%, #14233d 0%, var(--bg) 55%);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+        min-height: 100vh;
+      }
+      .wrap { max-width: 860px; margin: 0 auto; padding: 40px 22px 80px; }
+      header { margin-bottom: 28px; }
+      .logo {
+        font-weight: 900; letter-spacing: 1px; font-size: 13px; color: var(--accent);
+        text-transform: uppercase;
+      }
+      h1 { font-size: 30px; margin: 6px 0 6px; letter-spacing: -0.5px; }
+      .sub { color: var(--muted); font-size: 15px; }
+      .card {
+        background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+        padding: 22px; margin-bottom: 18px;
+      }
+      .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 16px; }
+      label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+      input[type="text"], input[type="number"], select, textarea {
+        width: 100%; background: var(--panel2); border: 1px solid var(--line);
+        color: var(--text); border-radius: 10px; padding: 11px 12px; font-size: 14px; outline: none;
+        font-family: inherit; resize: vertical;
+      }
+      input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+      .btn.ghost {
+        background: transparent; color: var(--accent); border: 1px solid var(--accent);
+        margin-top: 14px; font-size: 14px; padding: 12px;
+      }
+      .btn.ghost:hover { background: rgba(59,203,151,0.1); }
+      .photo .fields { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+      .photo .fields input { margin: 0; }
+      .photo .note { font-size: 12px; padding: 7px 10px; color: var(--muted); }
+      .photo .capin { font-weight: 700; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+      .field { margin-bottom: 14px; }
+      .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+      .drop {
+        border: 1.5px dashed var(--line); border-radius: 12px; padding: 26px; text-align: center;
+        color: var(--muted); cursor: pointer; transition: 0.15s; background: var(--panel2);
+      }
+      .drop:hover, .drop.over { border-color: var(--accent); color: var(--text); }
+      .photo {
+        display: flex; gap: 12px; align-items: center; background: var(--panel2);
+        border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-top: 10px;
+      }
+      .photo img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; flex: none; }
+      .photo .thumbs { display: flex; gap: 4px; flex: none; }
+      .pairtag { font-size: 8px; font-weight: 800; color: var(--accent); letter-spacing: 1px; }
+      .musicrow { display: flex; gap: 10px; align-items: center; }
+      .musicrow select { flex: 1; }
+      #musicPlay { width: 42px; height: 42px; font-size: 15px; }
+      .photo .cap { flex: 1; }
+      .photo .cap input { margin: 0; }
+      .photo .num { color: var(--muted); font-size: 12px; width: 18px; text-align: center; flex: none; }
+      .iconbtn {
+        background: var(--panel); border: 1px solid var(--line); color: var(--text);
+        border-radius: 8px; width: 30px; height: 30px; cursor: pointer; font-size: 14px; flex: none;
+      }
+      .iconbtn:hover { border-color: var(--accent); }
+      .btn {
+        background: var(--accent); color: #06101c; border: none; border-radius: 12px;
+        padding: 15px 22px; font-size: 16px; font-weight: 800; cursor: pointer; width: 100%;
+      }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .swatch { display: flex; align-items: center; gap: 10px; }
+      input[type="color"] { width: 46px; height: 42px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); padding: 2px; }
+      #status { margin-top: 18px; }
+      .bar { height: 10px; background: var(--panel2); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+      .bar > div { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+      .statusrow { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+      video { width: 100%; border-radius: 12px; margin-top: 16px; background: #000; }
+      .err { color: #ff8a8a; font-size: 14px; }
+      a.dl { display: inline-block; margin-top: 14px; color: var(--accent); font-weight: 700; text-decoration: none; }
+      .refine { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+      .refine label { font-size: 14px; color: var(--text); font-weight: 700; margin-bottom: 8px; }
+      .refine .btn.ghost { margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="logo">WSTI Reel Maker</div>
+        <h1>Make a branded reel</h1>
+        <div class="sub">Drop your photos in, add a few captions, pick a format, hit render. Same WSTI look every time.</div>
+      </header>
+
+      <div class="card">
+        <h2>1 · Photos &amp; story</h2>
+        <div class="field">
+          <label>What's this reel about? (the goal / event / story)</label>
+          <textarea id="reelContext" rows="2" placeholder="e.g. Recap of our April AI Project Hub night — show the energy, the hands-on building, and invite people to join."></textarea>
+        </div>
+        <div class="drop" id="drop">Click to choose photos, or drag &amp; drop them here</div>
+        <input type="file" id="files" accept="image/*" multiple hidden />
+        <div id="photoList"></div>
+        <button class="btn ghost" id="story" type="button">✨ Build the story (auto-arrange + write captions)</button>
+        <div class="hint">Add a short note per photo (what's happening), then let Claude order them into a narrative and write captions. You can still edit everything afterwards.</div>
+      </div>
+
+      <div class="card">
+        <h2>2 · Intro &amp; outro text</h2>
+        <div class="field">
+          <label>Kicker (small label above the title)</label>
+          <input type="text" id="kicker" value="WESTERN SYDNEY TECH INNOVATORS" />
+        </div>
+        <div class="field">
+          <label>Intro title</label>
+          <input type="text" id="title" value="Where Western Sydney builds with AI" />
+        </div>
+        <div class="field">
+          <label>Intro subtitle</label>
+          <input type="text" id="subtitle" value="3,400+ members. Beginners to builders." />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Closing headline</label>
+            <input type="text" id="ctaHeadline" value="Come build with us" />
+          </div>
+          <div class="field">
+            <label>Closing subtitle</label>
+            <input type="text" id="ctaSub" value="Free weekly sessions across Western Sydney" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Website</label>
+            <input type="text" id="website" value="westernsydneytechinnovators.org" />
+          </div>
+          <div class="field">
+            <label>Social handle</label>
+            <input type="text" id="handle" value="@westernsydneytechinnovators" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>3 · Look &amp; format</h2>
+        <div class="row3">
+          <div class="field">
+            <label>Format</label>
+            <select id="format">
+              <option value="reels">Reels / Stories (9:16)</option>
+              <option value="square">LinkedIn / Meetup (1:1)</option>
+              <option value="landscape">YouTube / Web (16:9)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Seconds per photo</label>
+            <input type="number" id="perPhotoSeconds" value="2.5" min="1.5" max="6" step="0.5" />
+          </div>
+          <div class="field">
+            <label>Accent colour</label>
+            <div class="swatch">
+              <input type="color" id="accent" value="#3bcb97" />
+              <input type="text" id="accentText" value="#3bcb97" />
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Background music</label>
+          <div class="musicrow">
+            <select id="music"><option value="">No music</option></select>
+            <button type="button" class="iconbtn" id="musicPlay" title="Preview">▶</button>
+          </div>
+          <audio id="musicPreview"></audio>
+          <div class="hint">Music loops automatically to fill the whole video. Add your own <code>.mp3</code> to <code>reel-maker/public/music/</code> for more options.</div>
+        </div>
+        <div class="hint" id="lengthHint"></div>
+      </div>
+
+      <button class="btn" id="render">Render my reel</button>
+
+      <div id="status"></div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      // A slide holds 1 or 2 photos + one shared caption.
+      let slides = []; // [{ photos: [{file,url,context}], caption }]
+      const flatPhotos = () => slides.flatMap((s) => s.photos);
+
+      // --- file selection ---
+      const drop = $("drop");
+      const fileInput = $("files");
+      drop.onclick = () => fileInput.click();
+      fileInput.onchange = (e) => addFiles(e.target.files);
+      drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+      drop.ondragleave = () => drop.classList.remove("over");
+      drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); };
+
+      function addFiles(list) {
+        for (const file of list) {
+          if (!file.type.startsWith("image/")) continue;
+          slides.push({ photos: [{ file, url: URL.createObjectURL(file), context: "" }], caption: "" });
+        }
+        renderList();
+      }
+      function move(i, d) {
+        const j = i + d;
+        if (j < 0 || j >= slides.length) return;
+        [slides[i], slides[j]] = [slides[j], slides[i]];
+        renderList();
+      }
+      function removeSlide(i) { slides.splice(i, 1); renderList(); }
+      function pairWithNext(i) {
+        const n = slides[i + 1];
+        if (!n || slides[i].photos.length !== 1 || n.photos.length !== 1) return;
+        slides[i].photos.push(n.photos[0]);
+        if (!slides[i].caption) slides[i].caption = n.caption || "";
+        slides.splice(i + 1, 1);
+        renderList();
+      }
+      function unpair(i) {
+        if (slides[i].photos.length !== 2) return;
+        const second = slides[i].photos.pop();
+        slides.splice(i + 1, 0, { photos: [second], caption: "" });
+        renderList();
+      }
+
+      function renderList() {
+        const el = $("photoList");
+        el.innerHTML = "";
+        slides.forEach((sl, i) => {
+          const esc = (s) => (s || "").replace(/"/g, "&quot;");
+          const isDuo = sl.photos.length === 2;
+          const row = document.createElement("div");
+          row.className = "photo";
+          const thumbs = sl.photos
+            .map((p) => '<img src="' + p.url + '"' + (isDuo ? ' style="width:46px;height:46px"' : "") + " />")
+            .join("");
+          const notes = sl.photos
+            .map((p, k) => '<input class="note" data-k="' + k + '" type="text" placeholder="Note: what\'s in ' + (isDuo ? "photo " + (k + 1) : "this photo") + '" value="' + esc(p.context) + '" />')
+            .join("");
+          row.innerHTML =
+            '<div class="num">' + (i + 1) + (isDuo ? '<div class="pairtag">PAIR</div>' : "") + "</div>" +
+            '<div class="thumbs">' + thumbs + "</div>" +
+            '<div class="fields">' + notes +
+            '<input class="capin" type="text" placeholder="On-screen caption (auto by ✨)" value="' + esc(sl.caption) + '" /></div>';
+          sl.photos.forEach((p, k) => {
+            row.querySelector('input.note[data-k="' + k + '"]').oninput = (e) => (p.context = e.target.value);
+          });
+          row.querySelector("input.capin").oninput = (e) => (sl.caption = e.target.value);
+          row.append(btn("↑", () => move(i, -1)), btn("↓", () => move(i, 1)));
+          if (isDuo) row.append(btn("⤢", () => unpair(i), "Split this pair"));
+          else if (slides[i + 1] && slides[i + 1].photos.length === 1) row.append(btn("🔗", () => pairWithNext(i), "Pair with next"));
+          row.append(btn("✕", () => removeSlide(i)));
+          el.appendChild(row);
+        });
+        updateLength();
+      }
+      function btn(txt, fn, title) {
+        const b = document.createElement("button");
+        b.className = "iconbtn"; b.textContent = txt; b.onclick = fn; b.type = "button";
+        if (title) b.title = title;
+        return b;
+      }
+      function updateLength() {
+        const per = Number($("perPhotoSeconds").value) || 3;
+        const n = slides.length;
+        const secs = (2.5 + n * per + 3.5).toFixed(0);
+        $("lengthHint").textContent =
+          n + " slide(s), " + flatPhotos().length + " photo(s) → about " + secs + "s. For ~30s aim for 7–8 slides.";
+      }
+      $("perPhotoSeconds").oninput = updateLength;
+
+      // accent color sync
+      $("accent").oninput = (e) => ($("accentText").value = e.target.value);
+      $("accentText").oninput = (e) => { if (/^#[0-9a-f]{6}$/i.test(e.target.value)) $("accent").value = e.target.value; };
+
+      // music list — friendly labels, default track, and a play/pause preview
+      const MUSIC_LABELS = {
+        "wsti-drive.wav": "Drive — energetic electronic",
+        "wsti-uplift.wav": "Uplift — bright & anthemic",
+        "wsti-chill.wav": "Chill — calm & ambient",
+        "wsti-bold.wav": "Bold — punchy beat",
+      };
+      const prettyMusic = (f) =>
+        MUSIC_LABELS[f] || f.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+      fetch("/api/music").then((r) => r.json()).then((files) => {
+        const sel = $("music");
+        files.forEach((f) => {
+          const o = document.createElement("option");
+          o.value = f; o.textContent = prettyMusic(f); sel.appendChild(o);
+        });
+        if (files.includes("wsti-drive.wav")) sel.value = "wsti-drive.wav";
+        else if (files.length) sel.value = files[0];
+      });
+
+      // preview player
+      const preview = $("musicPreview");
+      const playBtn = $("musicPlay");
+      function stopPreview() { preview.pause(); playBtn.textContent = "▶"; }
+      $("music").addEventListener("change", stopPreview);
+      preview.addEventListener("ended", () => (playBtn.textContent = "▶"));
+      playBtn.onclick = () => {
+        const track = $("music").value;
+        if (!track) { alert("Pick a track first (or it's set to No music)."); return; }
+        if (preview.paused) {
+          preview.src = "/music/" + track;
+          preview.play();
+          playBtn.textContent = "⏸";
+        } else {
+          stopPreview();
+        }
+      };
+
+      // --- narrative: build the story with Claude (orders, pairs, captions) ---
+      $("story").onclick = async () => {
+        const flat = flatPhotos();
+        if (flat.length === 0) { alert("Add some photos first."); return; }
+        const sBtn = $("story");
+        sBtn.disabled = true; sBtn.textContent = "✨ Thinking about your story…";
+        const fd = new FormData();
+        flat.forEach((p) => fd.append("photos", p.file, p.file.name));
+        fd.append("meta", JSON.stringify({
+          reelContext: $("reelContext").value,
+          format: $("format").value,
+          contexts: flat.map((p) => p.context),
+        }));
+        try {
+          const r = await fetch("/story", { method: "POST", body: fd });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Story failed");
+          // rebuild slides from the returned groups (each = 1 or 2 photo indices)
+          const used = new Set();
+          const built = [];
+          (j.sequence || []).forEach((g) => {
+            const idxs = (g.indices || []).filter((k) => flat[k] && !used.has(k)).slice(0, 2);
+            if (!idxs.length) return;
+            idxs.forEach((k) => used.add(k));
+            built.push({ photos: idxs.map((k) => flat[k]), caption: g.caption || "" });
+          });
+          flat.forEach((p, k) => { if (!used.has(k)) built.push({ photos: [p], caption: "" }); });
+          if (built.length) slides = built;
+          if (j.title) $("title").value = j.title;
+          if (j.subtitle) $("subtitle").value = j.subtitle;
+          if (j.ctaHeadline) $("ctaHeadline").value = j.ctaHeadline;
+          if (j.ctaSub) $("ctaSub").value = j.ctaSub;
+          renderList();
+        } catch (e) {
+          alert(e.message);
+        } finally {
+          sBtn.disabled = false; sBtn.textContent = "✨ Build the story (auto-arrange + write captions)";
+        }
+      };
+
+      // --- render ---
+      // adjustable look knobs (changed via the refine prompt; sensible defaults)
+      let knobs = { captionScale: 1, grain: 1, grade: 1, lightLeak: 1, particles: true };
+
+      function buildMeta() {
+        return {
+          format: $("format").value,
+          kicker: $("kicker").value,
+          title: $("title").value,
+          subtitle: $("subtitle").value,
+          ctaHeadline: $("ctaHeadline").value,
+          ctaSub: $("ctaSub").value,
+          website: $("website").value,
+          handle: $("handle").value,
+          accent: $("accentText").value,
+          perPhotoSeconds: Number($("perPhotoSeconds").value) || 3,
+          music: $("music").value || null,
+          captions: slides.map((s) => s.caption), // one per slide (used by refine)
+          slides: slides.map((s) => ({ caption: s.caption, count: s.photos.length })),
+          captionScale: knobs.captionScale,
+          grain: knobs.grain,
+          grade: knobs.grade,
+          lightLeak: knobs.lightLeak,
+          particles: knobs.particles,
+        };
+      }
+
+      // apply settings returned by /refine back into the form + knobs
+      function applySettings(s) {
+        const set = (id, v) => { if (v !== undefined && v !== null && $(id)) $(id).value = v; };
+        set("format", s.format); set("kicker", s.kicker); set("title", s.title);
+        set("subtitle", s.subtitle); set("ctaHeadline", s.ctaHeadline); set("ctaSub", s.ctaSub);
+        set("website", s.website); set("handle", s.handle);
+        if (s.accent) { $("accent").value = s.accent; $("accentText").value = s.accent; }
+        if (s.perPhotoSeconds) $("perPhotoSeconds").value = s.perPhotoSeconds;
+        if (s.music !== undefined) $("music").value = s.music || "";
+        if (Array.isArray(s.captions)) s.captions.forEach((c, i) => { if (slides[i]) slides[i].caption = c; });
+        ["captionScale", "grain", "grade", "lightLeak", "particles"].forEach((k) => { if (s[k] !== undefined) knobs[k] = s[k]; });
+        renderList();
+        updateLength();
+      }
+
+      async function doRender(meta) {
+        const flat = flatPhotos();
+        if (flat.length === 0) { alert("Add at least one photo first."); return; }
+        $("render").disabled = true; $("render").textContent = "Rendering…";
+        const fd = new FormData();
+        flat.forEach((p) => fd.append("photos", p.file, p.file.name)); // flattened in slide order
+        fd.append("meta", JSON.stringify(meta));
+        const status = $("status");
+        status.innerHTML =
+          '<div class="statusrow"><span id="stxt">Starting…</span><span id="spct">0%</span></div>' +
+          '<div class="bar"><div id="sbar"></div></div>';
+        try {
+          const r = await fetch("/render", { method: "POST", body: fd });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Render failed");
+          poll(j.jobId);
+        } catch (e) {
+          status.innerHTML = '<div class="err">' + e.message + "</div>";
+          resetBtn();
+        }
+      }
+
+      $("render").onclick = () => doRender(buildMeta());
+
+      function poll(jobId) {
+        const iv = setInterval(async () => {
+          const r = await fetch("/progress/" + jobId);
+          const j = await r.json();
+          const pct = Math.round((j.progress || 0) * 100);
+          if ($("sbar")) $("sbar").style.width = pct + "%";
+          if ($("spct")) $("spct").textContent = pct + "%";
+          if ($("stxt")) $("stxt").textContent = j.status === "rendering" ? "Rendering your reel…" : j.status;
+          if (j.status === "done") { clearInterval(iv); finish(jobId); }
+          else if (j.status === "error") { clearInterval(iv); $("status").innerHTML = '<div class="err">Error: ' + (j.error || "unknown") + "</div>"; resetBtn(); }
+        }, 600);
+      }
+
+      function finish(jobId) {
+        $("status").innerHTML =
+          '<div class="statusrow"><span>Done ✓</span><span>100%</span></div>' +
+          '<video controls autoplay muted loop playsinline preload="metadata" src="/download/' + jobId + '?inline=1"></video>' +
+          '<a class="dl" href="/download/' + jobId + '" download>↓ Download MP4</a>' +
+          '<div class="refine">' +
+          '<label>Want changes? Just tell me ✨</label>' +
+          '<textarea id="refineBox" rows="2" placeholder="e.g. make the captions a bit smaller, slow it down, use a warmer colour, drop the grain, reword caption 3 to \'shipping real AI\'"></textarea>' +
+          '<button class="btn ghost" id="refineBtn" type="button">Apply changes &amp; re-render</button>' +
+          '<div class="hint" id="refineNote"></div>' +
+          "</div>";
+        $("refineBtn").onclick = refine;
+        resetBtn();
+      }
+
+      async function refine() {
+        const instruction = ($("refineBox").value || "").trim();
+        if (!instruction) { $("refineBox").focus(); return; }
+        const rb = $("refineBtn");
+        rb.disabled = true; rb.textContent = "✨ Applying…";
+        $("refineNote").textContent = "";
+        try {
+          const r = await fetch("/refine", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ current: buildMeta(), instruction }),
+          });
+          const s = await r.json();
+          if (!r.ok) throw new Error(s.error || "Refine failed");
+          applySettings(s);
+          if (s._note) $("refineNote").textContent = "Claude: " + s._note;
+          doRender(buildMeta()); // re-render with the changes
+        } catch (e) {
+          $("refineNote").innerHTML = '<span style="color:#ff8a8a">' + e.message + "</span>";
+          rb.disabled = false; rb.textContent = "Apply changes & re-render";
+        }
+      }
+
+      function resetBtn() {
+        const b = $("render"); b.disabled = false; b.textContent = "Render my reel";
+      }
+    </script>
+  </body>
+</html>
