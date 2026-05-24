@@ -182,6 +182,40 @@
       .refine label { font-size: 14px; color: var(--text); font-weight: 700; margin-bottom: 9px; }
       .refine .btn.ghost { margin-top: 12px; }
 
+      /* --- wizard steps --- */
+      .steps { display: flex; align-items: center; gap: 8px; margin: 4px 0 26px; flex-wrap: wrap; }
+      .step-pill {
+        display: inline-flex; align-items: center; gap: 8px; background: transparent;
+        border: 1px solid var(--line); color: var(--muted); border-radius: 999px;
+        padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+        font-family: inherit; transition: border-color 0.16s, color 0.16s, background 0.16s;
+      }
+      .step-pill b {
+        display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+        background: var(--panel2); color: var(--muted); font-size: 11px; font-weight: 800;
+      }
+      .step-pill:hover { color: var(--text); border-color: #34507a; }
+      .step-pill.active { border-color: var(--accent); color: var(--text); background: rgba(59, 203, 151, 0.1); }
+      .step-pill.active b { background: var(--accent); color: #042014; }
+      .step-pill.done b::after { content: "✓"; }
+      .step-pill.done b { font-size: 0; }
+      .step-pill.done b::after { font-size: 12px; }
+      .step-line { flex: 1; height: 1px; background: var(--line); max-width: 36px; }
+      .page[hidden] { display: none; }
+      .pagenav { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+      .navbtn {
+        background: transparent; border: 1px solid var(--line); color: var(--muted);
+        border-radius: 11px; padding: 11px 18px; font-size: 14px; font-weight: 600;
+        cursor: pointer; font-family: inherit; width: auto; transition: border-color 0.16s, color 0.16s;
+      }
+      .navbtn:hover { border-color: var(--accent); color: var(--text); }
+      .skiplink {
+        display: block; margin: 14px auto 0; background: none; border: none; color: var(--muted);
+        font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;
+        text-underline-offset: 3px; padding: 4px;
+      }
+      .skiplink:hover { color: var(--accent); }
+
       /* accessibility + responsive */
       :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .iconbtn:focus-visible, .btn:focus-visible { box-shadow: var(--ring); }
@@ -208,6 +242,16 @@
         <div class="sub" id="brandTagline">Drop your event photos in, add a few notes, and let Claude arrange them into a story. Pick a format, hit render — the same polished look, every time.</div>
       </header>
 
+      <nav class="steps" id="steps">
+        <button class="step-pill active" type="button" data-step="1"><b>1</b> Photos &amp; story</button>
+        <span class="step-line"></span>
+        <button class="step-pill" type="button" data-step="2"><b>2</b> Text &amp; format</button>
+        <span class="step-line"></span>
+        <button class="step-pill" type="button" data-step="3"><b>3</b> Your reel</button>
+      </nav>
+
+      <!-- ============ STEP 1 ============ -->
+      <section class="page" id="page1">
       <div class="card">
         <h2><span class="step">1</span> Photos &amp; story</h2>
         <div class="field">
@@ -217,10 +261,14 @@
         <div class="drop" id="drop">Click to choose photos, or drag &amp; drop them here</div>
         <input type="file" id="files" accept="image/*" multiple hidden />
         <div id="photoList"></div>
-        <button class="btn ghost" id="story" type="button">✨ Build the story (auto-arrange + write captions)</button>
-        <div class="hint">Add a short note per photo (what's happening), then let Claude order them into a narrative and write captions. You can still edit everything afterwards.</div>
+        <button class="btn ghost" id="story" type="button">✨ Build the story &amp; continue →</button>
+        <div class="hint">Add a short note per photo (what's happening), then let Claude order them into a narrative and write captions, and move you to the next step. You can still edit everything afterwards.</div>
+        <button class="skiplink" id="skipStory" type="button">Skip — I'll write captions myself →</button>
       </div>
+      </section>
 
+      <!-- ============ STEP 2 ============ -->
+      <section class="page" id="page2" hidden>
       <div class="card">
         <h2><span class="step">2</span> Intro &amp; outro text</h2>
         <div class="field">
@@ -293,8 +341,18 @@
       </div>
 
       <button class="btn" id="render">Render my reel</button>
+      <div class="pagenav">
+        <button class="navbtn" id="backTo1" type="button">← Back to photos</button>
+      </div>
+      </section>
 
-      <div id="status"></div>
+      <!-- ============ STEP 3 ============ -->
+      <section class="page" id="page3" hidden>
+        <div id="status"></div>
+        <div class="pagenav">
+          <button class="navbtn" id="backTo2" type="button">← Edit settings &amp; re-render</button>
+        </div>
+      </section>
     </div>
 
     <script>
@@ -302,6 +360,102 @@
       // A slide holds 1 or 2 photos + one shared caption.
       let slides = []; // [{ photos: [{file,url,context}], caption }]
       const flatPhotos = () => slides.flatMap((s) => s.photos);
+
+      // --- wizard navigation (purely show/hide; all logic/IDs unchanged) ---
+      const PAGES = ["page1", "page2", "page3"];
+      let currentPage = "page1";
+      let currentJobId = null;
+      function goTo(id) {
+        currentPage = id;
+        PAGES.forEach((p) => { $(p).hidden = p !== id; });
+        document.querySelectorAll(".step-pill").forEach((el) => {
+          const n = "page" + el.dataset.step;
+          el.classList.toggle("active", n === id);
+          el.classList.toggle("done", PAGES.indexOf(n) < PAGES.indexOf(id));
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        scheduleSave();
+      }
+      document.querySelectorAll(".step-pill").forEach((el) => {
+        el.onclick = () => goTo("page" + el.dataset.step);
+      });
+      $("skipStory").onclick = () => goTo("page2");
+      $("backTo1").onclick = () => goTo("page1");
+      $("backTo2").onclick = () => goTo("page2");
+
+      // --- draft persistence ---------------------------------------------
+      // sessionStorage holds the light draft (text, captions, page, jobId): it
+      // SURVIVES a refresh but is wiped when the tab is closed → reopening starts
+      // fresh, exactly as asked. Photo blobs (too big for sessionStorage) live in
+      // IndexedDB and are cleared whenever there's no session draft (i.e. reopen).
+      const DRAFT_KEY = "reel_draft_v1";
+      const FIELD_IDS = ["reelContext","kicker","title","subtitle","ctaHeadline","ctaSub","website","handle","format","perPhotoSeconds","accent","accentText","music"];
+
+      function openDB() {
+        return new Promise((res, rej) => {
+          const r = indexedDB.open("reelmaker", 1);
+          r.onupgradeneeded = () => r.result.createObjectStore("photos");
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+        });
+      }
+      async function dbPut(id, file) { const db = await openDB(); return new Promise((res) => { const tx = db.transaction("photos", "readwrite"); tx.objectStore("photos").put(file, id); tx.oncomplete = res; }); }
+      async function dbGet(id) { const db = await openDB(); return new Promise((res) => { const rq = db.transaction("photos", "readonly").objectStore("photos").get(id); rq.onsuccess = () => res(rq.result); rq.onerror = () => res(null); }); }
+      async function dbClear() { try { const db = await openDB(); return new Promise((res) => { const tx = db.transaction("photos", "readwrite"); tx.objectStore("photos").clear(); tx.oncomplete = res; }); } catch {} }
+
+      let saveTimer = null;
+      function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveDraft, 400); }
+      function saveDraft() {
+        try {
+          const fields = {};
+          FIELD_IDS.forEach((id) => { if ($(id)) fields[id] = $(id).value; });
+          const draft = {
+            fields, knobs, page: currentPage, jobId: currentJobId, refineHistory,
+            slides: slides.map((s) => ({ caption: s.caption, photos: s.photos.map((p) => ({ id: p.id, name: p.file && p.file.name, context: p.context })) })),
+          };
+          sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } catch {}
+      }
+
+      async function restoreDraft() {
+        let draft = null;
+        try { draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); } catch {}
+        if (!draft) { await dbClear(); return; } // reopened / fresh → wipe stale photo blobs
+        // text + select fields
+        if (draft.fields) FIELD_IDS.forEach((id) => { if ($(id) && draft.fields[id] != null) $(id).value = draft.fields[id]; });
+        if (draft.knobs) knobs = draft.knobs;
+        if (Array.isArray(draft.refineHistory)) refineHistory = draft.refineHistory;
+        // photos from IndexedDB
+        const rebuilt = [];
+        for (const s of (draft.slides || [])) {
+          const photos = [];
+          for (const p of (s.photos || [])) {
+            const file = await dbGet(p.id);
+            if (file) photos.push({ id: p.id, file, url: URL.createObjectURL(file), context: p.context || "" });
+          }
+          if (photos.length) rebuilt.push({ photos, caption: s.caption || "" });
+        }
+        slides = rebuilt;
+        renderList();
+        currentJobId = draft.jobId || null;
+        // re-sync accent swatch + music preview selection
+        if ($("accentText").value) $("accent").value = $("accentText").value;
+        if (draft.page && draft.page !== "page1") {
+          goTo(draft.page);
+          if (draft.page === "page3" && currentJobId) resumeJob(currentJobId);
+        }
+      }
+
+      function resumeJob(jobId) {
+        $("status").innerHTML =
+          '<div class="statusrow"><span id="stxt">Resuming…</span><span id="spct">0%</span></div>' +
+          '<div class="bar"><div id="sbar"></div></div>';
+        poll(jobId);
+      }
+
+      // silently save on any field/caption/note edit (no UI; restored on refresh)
+      document.addEventListener("input", scheduleSave);
+      document.addEventListener("change", scheduleSave);
 
       // --- file selection ---
       const drop = $("drop");
@@ -315,9 +469,12 @@
       function addFiles(list) {
         for (const file of list) {
           if (!file.type.startsWith("image/")) continue;
-          slides.push({ photos: [{ file, url: URL.createObjectURL(file), context: "" }], caption: "" });
+          const id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now() + Math.random());
+          dbPut(id, file); // stash the blob so it survives a refresh
+          slides.push({ photos: [{ id, file, url: URL.createObjectURL(file), context: "" }], caption: "" });
         }
         renderList();
+        saveDraft();
       }
       function move(i, d) {
         const j = i + d;
@@ -371,6 +528,7 @@
           el.appendChild(row);
         });
         updateLength();
+        scheduleSave();
       }
       function btn(txt, fn, title) {
         const b = document.createElement("button");
@@ -393,6 +551,7 @@
 
       // --- brand: fill every default from /api/brand so the same form works for
       // any business (just swap brand.config.json + the logo). ---
+      const hasDraft = !!sessionStorage.getItem(DRAFT_KEY);
       fetch("/api/brand").then((r) => r.json()).then((b) => {
         document.title = (b.name ? b.name + " — " : "") + "Reel Maker";
         if (b.logoImage) $("brandLogo").src = "/" + b.logoImage.replace(/^\//, "");
@@ -401,16 +560,19 @@
         if (b.name) $("brandName").textContent = b.name;
         if (b.tagline) $("brandTagline").textContent = b.tagline;
         if (b.accent && /^#[0-9a-f]{6}$/i.test(b.accent)) {
-          $("accent").value = b.accent;
-          $("accentText").value = b.accent;
           document.documentElement.style.setProperty("--accent", b.accent);
+          if (!hasDraft) { $("accent").value = b.accent; $("accentText").value = b.accent; }
         }
-        const c = b.defaultCopy || {};
-        const fill = (id, v) => { if (v != null && $(id)) $(id).value = v; };
-        fill("kicker", c.kicker); fill("title", c.title); fill("subtitle", c.subtitle);
-        fill("ctaHeadline", c.ctaHeadline); fill("ctaSub", c.ctaSub);
-        fill("website", c.website); fill("handle", c.handle);
-      }).catch(() => { /* keep static fallbacks if the endpoint is unavailable */ });
+        // only seed brand defaults when there's no saved draft to restore
+        if (!hasDraft) {
+          const c = b.defaultCopy || {};
+          const fill = (id, v) => { if (v != null && $(id)) $(id).value = v; };
+          fill("kicker", c.kicker); fill("title", c.title); fill("subtitle", c.subtitle);
+          fill("ctaHeadline", c.ctaHeadline); fill("ctaSub", c.ctaSub);
+          fill("website", c.website); fill("handle", c.handle);
+        }
+      }).catch(() => { /* keep static fallbacks if the endpoint is unavailable */ })
+        .finally(() => { restoreDraft(); }); // apply saved draft after brand identity is set
 
       // music list — friendly labels, default track, and a play/pause preview
       const MUSIC_LABELS = {
@@ -428,7 +590,11 @@
           const o = document.createElement("option");
           o.value = f; o.textContent = prettyMusic(f); sel.appendChild(o);
         });
-        if (files.includes("wsti-drive.wav")) sel.value = "wsti-drive.wav";
+        // honour a saved draft's track; otherwise default to drive / first track
+        let saved = null;
+        try { saved = (JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null") || {}).fields?.music; } catch {}
+        if (saved != null && (saved === "" || files.includes(saved))) sel.value = saved;
+        else if (files.includes("wsti-drive.wav")) sel.value = "wsti-drive.wav";
         else if (files.length) sel.value = files[0];
       });
 
@@ -483,16 +649,19 @@
           if (j.ctaHeadline) $("ctaHeadline").value = j.ctaHeadline;
           if (j.ctaSub) $("ctaSub").value = j.ctaSub;
           renderList();
+          goTo("page2"); // story built — move to text & format
         } catch (e) {
           alert(e.message);
         } finally {
-          sBtn.disabled = false; sBtn.textContent = "✨ Build the story (auto-arrange + write captions)";
+          sBtn.disabled = false; sBtn.textContent = "✨ Build the story & continue →";
         }
       };
 
       // --- render ---
       // adjustable look knobs (changed via the refine prompt; sensible defaults)
       let knobs = { captionScale: 1, grain: 1, grade: 1, lightLeak: 1, particles: true };
+      // snapshots of settings taken BEFORE each prompt-box change, for undo
+      let refineHistory = [];
 
       function buildMeta() {
         return {
@@ -547,6 +716,7 @@
           const r = await fetch("/render", { method: "POST", body: fd });
           const j = await r.json();
           if (!r.ok) throw new Error(j.error || "Render failed");
+          currentJobId = j.jobId; saveDraft(); // remember the job so a refresh can resume it
           poll(j.jobId);
         } catch (e) {
           status.innerHTML = '<div class="err">' + e.message + "</div>";
@@ -554,12 +724,22 @@
         }
       }
 
-      $("render").onclick = () => doRender(buildMeta());
+      $("render").onclick = () => {
+        if (flatPhotos().length === 0) { alert("Add at least one photo first."); goTo("page1"); return; }
+        goTo("page3"); // show the reel/progress on its own page
+        doRender(buildMeta());
+      };
 
       function poll(jobId) {
         const iv = setInterval(async () => {
           const r = await fetch("/progress/" + jobId);
           const j = await r.json();
+          if (r.status === 404 || (j && j.error && j.status === undefined)) {
+            clearInterval(iv);
+            $("status").innerHTML = '<div class="err">That render is no longer available (the server may have restarted). Head back and render again.</div>';
+            resetBtn();
+            return;
+          }
           const pct = Math.round((j.progress || 0) * 100);
           if ($("sbar")) $("sbar").style.width = pct + "%";
           if ($("spct")) $("spct").textContent = pct + "%";
@@ -578,9 +758,13 @@
           '<label>Want changes? Just tell me ✨</label>' +
           '<textarea id="refineBox" rows="2" placeholder="e.g. make the captions a bit smaller, slow it down, use a warmer colour, drop the grain, reword caption 3 to \'shipping real AI\'"></textarea>' +
           '<button class="btn ghost" id="refineBtn" type="button">Apply changes &amp; re-render</button>' +
+          (refineHistory.length
+            ? '<button class="btn ghost" id="undoBtn" type="button">↩ Undo last change (' + refineHistory.length + ")</button>"
+            : "") +
           '<div class="hint" id="refineNote"></div>' +
           "</div>";
         $("refineBtn").onclick = refine;
+        if ($("undoBtn")) $("undoBtn").onclick = undoRefine;
         resetBtn();
       }
 
@@ -590,21 +774,33 @@
         const rb = $("refineBtn");
         rb.disabled = true; rb.textContent = "✨ Applying…";
         $("refineNote").textContent = "";
+        const before = buildMeta(); // snapshot to undo back to
         try {
           const r = await fetch("/refine", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ current: buildMeta(), instruction }),
+            body: JSON.stringify({ current: before, instruction }),
           });
           const s = await r.json();
           if (!r.ok) throw new Error(s.error || "Refine failed");
+          refineHistory.push(before); // remember the pre-change state
           applySettings(s);
+          saveDraft();
           if (s._note) $("refineNote").textContent = "Claude: " + s._note;
           doRender(buildMeta()); // re-render with the changes
         } catch (e) {
           $("refineNote").innerHTML = '<span style="color:#ff8a8a">' + e.message + "</span>";
           rb.disabled = false; rb.textContent = "Apply changes & re-render";
         }
+      }
+
+      // Revert the most recent prompt-box change and re-render the previous version.
+      async function undoRefine() {
+        if (!refineHistory.length) return;
+        const prev = refineHistory.pop();
+        applySettings(prev); // restores fields, captions, colour, knobs
+        saveDraft();
+        doRender(buildMeta());
       }
 
       function resetBtn() {
