@@ -1,0 +1,20 @@
+{
+  "id": "wsti",
+  "name": "Western Sydney Tech Innovators",
+  "wordmark": "WSTI",
+  "logoImage": "brand/wsti-logo.png",
+  "useBuiltinMark": true,
+  "accent": "#3BCB97",
+  "bg": "#0B121F",
+  "defaultCopy": {
+    "kicker": "WESTERN SYDNEY TECH INNOVATORS",
+    "title": "Where Western Sydney builds with AI",
+    "subtitle": "3,400+ members. Beginners to builders.",
+    "ctaHeadline": "Come build with us",
+    "ctaSub": "Free weekly sessions across Western Sydney",
+    "website": "westernsydneytechinnovators.org",
+    "handle": "@westernsydneytechinnovators"
+  },
+  "tagline": "Drop your event photos in, add a few notes, and let Claude arrange them into a story. Pick a format, hit render — the same polished WSTI look, every time.",
+  "voice": "WSTI (Western Sydney Tech Innovators) is a 3,400+ member community in Western Sydney focused on hands-on AI and emerging tech. The brand voice is warm, human, energetic and inclusive — proud of its people, never corporate or stiff. Celebrate the people, the energy, the curiosity, and Western Sydney pride."
+}

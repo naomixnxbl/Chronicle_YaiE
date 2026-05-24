@@ -34,6 +34,10 @@ const MUSIC_DIR = path.join(PUBLIC_DIR, "music");
 const OUT_DIR = path.join(__dirname, "out");
 for (const d of [UPLOADS_DIR, MUSIC_DIR, OUT_DIR]) fs.mkdirSync(d, { recursive: true });
 
+// Single source of truth for who this instance is branded for. Swap this file
+// (and the logo in public/brand/) to rebrand the whole tool — see tools/new-brand.mjs.
+const brand = JSON.parse(fs.readFileSync(path.join(__dirname, "brand.config.json"), "utf8"));
+
 // ---- Remotion bundle (built once, reused for every render) ----
 let serveUrlPromise = null;
 const getServeUrl = () => {
@@ -80,7 +84,22 @@ const app = express();
 app.use(express.json());
 app.use("/uploads", express.static(UPLOADS_DIR));
 app.use("/music", express.static(MUSIC_DIR));
+app.use("/brand", express.static(path.join(PUBLIC_DIR, "brand")));
 app.get("/", (req, res) => res.sendFile(path.join(PUBLIC_DIR, "form.html")));
+
+// Brand identity for this instance — the form fetches this to fill its defaults.
+app.get("/api/brand", (req, res) => {
+  res.json({
+    id: brand.id,
+    name: brand.name,
+    wordmark: brand.wordmark,
+    logoImage: brand.logoImage,
+    accent: brand.accent,
+    bg: brand.bg,
+    tagline: brand.tagline ?? "",
+    defaultCopy: brand.defaultCopy,
+  });
+});
 
 // List background music tracks the user has dropped into public/music/
 app.get("/api/music", (req, res) => {
@@ -91,7 +110,9 @@ app.get("/api/music", (req, res) => {
 });
 
 // ---- narrative: arrange photos into a story + write captions (Claude vision) ----
-const STORY_SYSTEM = `You are the story editor for WSTI (Western Sydney Tech Innovators), a 3,400+ member community in Western Sydney focused on hands-on AI and emerging tech. The brand voice is warm, human, energetic and inclusive — proud of its people, never corporate or stiff.
+const STORY_SYSTEM = `You are the story editor for ${brand.name}.
+
+BRAND & VOICE: ${brand.voice}
 
 Your job: turn a set of event photos into a punchy ~30-second reel.
 
@@ -104,8 +125,8 @@ PAIRING (elegant editorial pairs): when TWO photos clearly belong to the SAME mo
 
 Return "sequence" as a list of slides. Each slide has "indices" (ONE or TWO photo indices, matching the bracketed numbers shown with each photo) and a "caption". Every photo index must appear exactly once across all slides.
 
-Caption voice — be CREATIVE, WARM and WSTI:
-- 2 to 5 words. Vivid, human, a little playful. Celebrate the people, the energy, the curiosity, Western Sydney pride.
+Caption voice — be CREATIVE and ON-BRAND (match the voice above):
+- 2 to 5 words. Vivid, human, a little playful. Celebrate the people, the energy, and what makes this community special.
 - Reflect what's actually in the photo(s). For a pair, write one caption that ties both together.
 - Avoid generic/corporate lines ("great event", "amazing time"). No emojis, no hashtags, no end punctuation.
 - Title <= 8 words. Subtitle <= 8 words. Closing headline <= 5 words. Closing sub <= 10 words.`;
@@ -158,7 +179,7 @@ app.post("/story", memUpload.array("photos", 20), async (req, res) => {
       {
         type: "text",
         text:
-          `Reel goal / context:\n${reelContext || "(none provided — infer a strong WSTI community story)"}\n\n` +
+          `Reel goal / context:\n${reelContext || `(none provided — infer a strong ${brand.name} community story)`}\n\n` +
           `${formatNote}\n\n` +
           `Here are ${files.length} photos, each shown with its index in [brackets] and a short note. Study every image.`,
       },
@@ -199,20 +220,20 @@ app.post("/story", memUpload.array("photos", 20), async (req, res) => {
 });
 
 // ---- refine: turn a natural-language tweak into adjusted settings ----
-const REFINE_SYSTEM = `You adjust the settings for a WSTI promo reel based on a short instruction from the user.
+const REFINE_SYSTEM = `You adjust the settings for a ${brand.name} promo reel based on a short instruction from the user.
 
 You are given the CURRENT settings as JSON and the user's instruction. Return the COMPLETE updated settings (same shape), changing ONLY what the instruction implies and keeping everything else byte-identical.
 
 Field guide:
 - format: "reels" (9:16) | "square" (1:1) | "landscape" (16:9)
 - perPhotoSeconds: 1.5-6 (higher = slower pace)
-- accent: hex colour (the brand default is #3BCB97 green)
+- accent: hex colour (the brand default is ${brand.accent})
 - music: must be one of the available track filenames, or null for none
 - title / subtitle: intro copy. ctaHeadline / ctaSub: closing copy. kicker, website, handle: brand lines
 - captions: array of the on-screen photo captions, IN ORDER. Keep the SAME number of items and order; you may reword or shorten them. Captions should be 2-5 words, punchy, no emojis/hashtags.
 - captionScale: 0.6-1.6 (text size; 1 = default, lower = smaller)
 - grain: 0-1 (film grain). grade: 0-1 (cinematic colour). lightLeak: 0-1 (drifting leaks). particles: boolean (floating bokeh)
-- Brand voice: professional, energetic, inclusive, Western Sydney AI community.
+- Brand voice: ${brand.voice}
 
 If the user asks for something not controllable here (a brand-new effect, a specific transition, reordering photos, adding/removing photos), leave settings unchanged for that part and explain briefly in "_note". Otherwise set "_note" to a one-line summary of what you changed.`;
 
@@ -317,15 +338,18 @@ app.post("/render", assignJobId, upload.array("photos", 20), async (req, res) =>
     const inputProps = {
       format: meta.format || "reels",
       slides,
-      kicker: meta.kicker ?? "",
-      title: meta.title ?? "",
-      subtitle: meta.subtitle ?? "",
-      ctaHeadline: meta.ctaHeadline ?? "",
-      ctaSub: meta.ctaSub ?? "",
-      website: meta.website ?? "",
-      handle: meta.handle ?? "",
-      accent: meta.accent || "#3bcb97",
-      bg: meta.bg || "#0B121F",
+      kicker: meta.kicker ?? brand.defaultCopy.kicker,
+      title: meta.title ?? brand.defaultCopy.title,
+      subtitle: meta.subtitle ?? brand.defaultCopy.subtitle,
+      ctaHeadline: meta.ctaHeadline ?? brand.defaultCopy.ctaHeadline,
+      ctaSub: meta.ctaSub ?? brand.defaultCopy.ctaSub,
+      website: meta.website ?? brand.defaultCopy.website,
+      handle: meta.handle ?? brand.defaultCopy.handle,
+      accent: meta.accent || brand.accent,
+      bg: meta.bg || brand.bg,
+      wordmark: brand.wordmark,
+      logoImage: brand.logoImage,
+      useBuiltinMark: brand.useBuiltinMark,
       perPhotoSeconds: Number(meta.perPhotoSeconds) || 3,
       music: meta.music ? `${BASE}/music/${meta.music}` : null,
       captionScale: clamp(meta.captionScale, 0.6, 1.6, 1),
@@ -381,10 +405,10 @@ app.get("/download/:id", (req, res) => {
     // sendFile supports HTTP range requests + sets video/mp4 — needed for in-browser <video> playback
     return res.sendFile(j.file, { headers: { "Content-Type": "video/mp4" } });
   }
-  res.download(j.file, `wsti-reel-${req.params.id}.mp4`);
+  res.download(j.file, `${brand.id}-reel-${req.params.id}.mp4`);
 });
 
 app.listen(PORT, () => {
-  console.log(`\n  WSTI Reel Maker running →  ${BASE}\n`);
+  console.log(`\n  ${brand.name} Reel Maker running →  ${BASE}\n`);
   getServeUrl(); // warm the bundle so the first render is fast
 });

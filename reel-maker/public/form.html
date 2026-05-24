@@ -4,109 +4,212 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WSTI Reel Maker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
-        --bg: #0b121f;
-        --panel: #111a2b;
-        --panel2: #16223a;
+        --bg: #090f1a;
+        --panel: rgba(20, 31, 51, 0.72);
+        --panel2: #131e33;
         --line: #243149;
-        --text: #eaf0f7;
-        --muted: #8aa0bd;
+        --line-soft: rgba(138, 160, 189, 0.16);
+        --text: #eef3fa;
+        --muted: #91a6c4;
         --accent: #3bcb97;
+        --accent-2: #46d9b6;
+        --danger: #ff8a8a;
+        --radius: 18px;
+        --shadow: 0 22px 60px -28px rgba(0, 0, 0, 0.85);
+        --ring: 0 0 0 3px rgba(59, 203, 151, 0.28);
       }
       * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
       body {
         margin: 0;
-        background: radial-gradient(120% 90% at 50% -10%, #14233d 0%, var(--bg) 55%);
+        background:
+          radial-gradient(900px 540px at 82% -8%, rgba(59, 203, 151, 0.13), transparent 60%),
+          radial-gradient(1100px 680px at 50% -12%, #16284a 0%, var(--bg) 58%);
+        background-attachment: fixed;
         color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-feature-settings: "cv05", "ss01";
+        -webkit-font-smoothing: antialiased;
         min-height: 100vh;
+        line-height: 1.5;
       }
-      .wrap { max-width: 860px; margin: 0 auto; padding: 40px 22px 80px; }
-      header { margin-bottom: 28px; }
+      .wrap { max-width: 880px; margin: 0 auto; padding: 52px 22px 96px; }
+
+      /* header */
+      header { margin-bottom: 34px; }
+      .brandrow { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+      .brandrow img { height: 34px; width: auto; display: block; }
+      .brandrow .wordmark {
+        font-weight: 800; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
+        color: var(--text);
+      }
       .logo {
-        font-weight: 900; letter-spacing: 1px; font-size: 13px; color: var(--accent);
+        display: inline-flex; align-items: center; gap: 7px;
+        font-weight: 700; letter-spacing: 0.16em; font-size: 11.5px; color: var(--accent);
         text-transform: uppercase;
+        padding: 6px 12px; border-radius: 999px;
+        background: rgba(59, 203, 151, 0.1); border: 1px solid rgba(59, 203, 151, 0.28);
       }
-      h1 { font-size: 30px; margin: 6px 0 6px; letter-spacing: -0.5px; }
-      .sub { color: var(--muted); font-size: 15px; }
+      .logo::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+      h1 {
+        font-family: "Fraunces", Georgia, serif; font-weight: 600;
+        font-size: clamp(34px, 6vw, 50px); line-height: 1.05; letter-spacing: -0.015em;
+        margin: 16px 0 10px;
+      }
+      h1 em { font-style: italic; color: var(--accent); }
+      .sub { color: var(--muted); font-size: 16px; max-width: 56ch; }
+
+      /* cards */
       .card {
-        background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
-        padding: 22px; margin-bottom: 18px;
+        position: relative; background: var(--panel);
+        border: 1px solid var(--line-soft); border-radius: var(--radius);
+        padding: 26px; margin-bottom: 20px;
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        box-shadow: var(--shadow);
       }
-      .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 16px; }
-      label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+      .card::before {
+        content: ""; position: absolute; inset: 0 0 auto; height: 1px; border-radius: var(--radius) var(--radius) 0 0;
+        background: linear-gradient(90deg, transparent, rgba(59, 203, 151, 0.5), transparent);
+      }
+      .card h2 {
+        display: flex; align-items: center; gap: 12px;
+        font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+        margin: 0 0 20px; font-weight: 700;
+      }
+      .card h2 .step {
+        display: grid; place-items: center; width: 26px; height: 26px; flex: none;
+        border-radius: 8px; font-size: 13px; font-weight: 800; color: var(--accent);
+        background: rgba(59, 203, 151, 0.12); border: 1px solid rgba(59, 203, 151, 0.3);
+      }
+      label { display: block; font-size: 12.5px; color: var(--muted); margin: 0 0 7px; font-weight: 500; }
       input[type="text"], input[type="number"], select, textarea {
         width: 100%; background: var(--panel2); border: 1px solid var(--line);
-        color: var(--text); border-radius: 10px; padding: 11px 12px; font-size: 14px; outline: none;
-        font-family: inherit; resize: vertical;
+        color: var(--text); border-radius: 11px; padding: 12px 13px; font-size: 14px; outline: none;
+        font-family: inherit; resize: vertical; transition: border-color 0.16s, box-shadow 0.16s, background 0.16s;
       }
-      input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+      input::placeholder, textarea::placeholder { color: #5f739180; }
+      input:hover, select:hover, textarea:hover { border-color: #2f405e; }
+      input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: var(--ring); background: #16233c; }
+      select { appearance: none; -webkit-appearance: none; cursor: pointer;
+        background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+        background-position: calc(100% - 18px) 18px, calc(100% - 13px) 18px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+      }
+
       .btn.ghost {
-        background: transparent; color: var(--accent); border: 1px solid var(--accent);
-        margin-top: 14px; font-size: 14px; padding: 12px;
+        background: transparent; color: var(--accent); border: 1px solid rgba(59, 203, 151, 0.45);
+        margin-top: 14px; font-size: 14px; padding: 13px; font-weight: 600;
+        transition: background 0.16s, border-color 0.16s, transform 0.06s;
       }
-      .btn.ghost:hover { background: rgba(59,203,151,0.1); }
-      .photo .fields { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+      .btn.ghost:hover { background: rgba(59,203,151,0.12); border-color: var(--accent); }
+      .btn.ghost:active { transform: translateY(1px); }
+
+      .photo .fields { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
       .photo .fields input { margin: 0; }
-      .photo .note { font-size: 12px; padding: 7px 10px; color: var(--muted); }
-      .photo .capin { font-weight: 700; }
-      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-      .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-      .field { margin-bottom: 14px; }
-      .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+      .photo .note { font-size: 12px; padding: 8px 11px; color: var(--muted); }
+      .photo .capin { font-weight: 600; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+      .field { margin-bottom: 16px; }
+      .field:last-child { margin-bottom: 0; }
+      .hint { font-size: 12.5px; color: var(--muted); margin-top: 8px; line-height: 1.55; }
+      .hint code { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 11.5px; }
+
       .drop {
-        border: 1.5px dashed var(--line); border-radius: 12px; padding: 26px; text-align: center;
-        color: var(--muted); cursor: pointer; transition: 0.15s; background: var(--panel2);
+        border: 1.5px dashed #314363; border-radius: 14px; padding: 34px 26px; text-align: center;
+        color: var(--muted); cursor: pointer; transition: border-color 0.18s, color 0.18s, background 0.18s, transform 0.06s;
+        background: rgba(19, 30, 51, 0.5);
       }
-      .drop:hover, .drop.over { border-color: var(--accent); color: var(--text); }
+      .drop::before { content: "⬆"; display: block; font-size: 22px; margin-bottom: 8px; opacity: 0.7; }
+      .drop:hover, .drop.over { border-color: var(--accent); color: var(--text); background: rgba(59, 203, 151, 0.07); }
+      .drop.over { transform: scale(1.01); }
+
       .photo {
-        display: flex; gap: 12px; align-items: center; background: var(--panel2);
-        border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-top: 10px;
+        display: flex; gap: 13px; align-items: center; background: var(--panel2);
+        border: 1px solid var(--line); border-radius: 13px; padding: 11px; margin-top: 11px;
+        transition: border-color 0.16s, transform 0.12s;
       }
-      .photo img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; flex: none; }
+      .photo:hover { border-color: #34507a; }
+      .photo img { width: 64px; height: 64px; object-fit: cover; border-radius: 9px; flex: none; box-shadow: 0 6px 16px -8px rgba(0,0,0,0.7); }
       .photo .thumbs { display: flex; gap: 4px; flex: none; }
-      .pairtag { font-size: 8px; font-weight: 800; color: var(--accent); letter-spacing: 1px; }
+      .pairtag { font-size: 8px; font-weight: 800; color: var(--accent); letter-spacing: 0.12em; }
       .musicrow { display: flex; gap: 10px; align-items: center; }
       .musicrow select { flex: 1; }
-      #musicPlay { width: 42px; height: 42px; font-size: 15px; }
+      #musicPlay { width: 44px; height: 44px; font-size: 15px; flex: none; }
       .photo .cap { flex: 1; }
       .photo .cap input { margin: 0; }
-      .photo .num { color: var(--muted); font-size: 12px; width: 18px; text-align: center; flex: none; }
+      .photo .num {
+        color: var(--muted); font-size: 12px; min-width: 22px; text-align: center; flex: none; font-weight: 700;
+        display: flex; flex-direction: column; align-items: center; gap: 2px;
+      }
       .iconbtn {
-        background: var(--panel); border: 1px solid var(--line); color: var(--text);
-        border-radius: 8px; width: 30px; height: 30px; cursor: pointer; font-size: 14px; flex: none;
+        background: rgba(20, 31, 51, 0.6); border: 1px solid var(--line); color: var(--text);
+        border-radius: 9px; width: 32px; height: 32px; cursor: pointer; font-size: 14px; flex: none;
+        display: grid; place-items: center; transition: border-color 0.14s, background 0.14s, color 0.14s;
       }
-      .iconbtn:hover { border-color: var(--accent); }
+      .iconbtn:hover { border-color: var(--accent); color: var(--accent); background: rgba(59, 203, 151, 0.08); }
       .btn {
-        background: var(--accent); color: #06101c; border: none; border-radius: 12px;
-        padding: 15px 22px; font-size: 16px; font-weight: 800; cursor: pointer; width: 100%;
+        background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #042014; border: none; border-radius: 14px;
+        padding: 16px 22px; font-size: 16px; font-weight: 800; letter-spacing: 0.01em; cursor: pointer; width: 100%;
+        box-shadow: 0 14px 30px -12px rgba(59, 203, 151, 0.6); transition: transform 0.08s, box-shadow 0.16s, filter 0.16s;
       }
-      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn:hover { filter: brightness(1.05); box-shadow: 0 18px 38px -12px rgba(59, 203, 151, 0.7); }
+      .btn:active { transform: translateY(1px); }
+      .btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; filter: none; }
       .swatch { display: flex; align-items: center; gap: 10px; }
-      input[type="color"] { width: 46px; height: 42px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); padding: 2px; }
-      #status { margin-top: 18px; }
+      input[type="color"] { width: 48px; height: 44px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel2); padding: 3px; cursor: pointer; flex: none; }
+      #status { margin-top: 22px; }
       .bar { height: 10px; background: var(--panel2); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
-      .bar > div { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
-      .statusrow { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
-      video { width: 100%; border-radius: 12px; margin-top: 16px; background: #000; }
-      .err { color: #ff8a8a; font-size: 14px; }
-      a.dl { display: inline-block; margin-top: 14px; color: var(--accent); font-weight: 700; text-decoration: none; }
-      .refine { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
-      .refine label { font-size: 14px; color: var(--text); font-weight: 700; margin-bottom: 8px; }
+      .bar > div {
+        height: 100%; width: 0; border-radius: 99px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.3s ease;
+        background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+      }
+      @keyframes shimmer { to { background-position: 200% 0; } }
+      .statusrow { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 9px; font-weight: 500; }
+      video { width: 100%; border-radius: 14px; margin-top: 18px; background: #000; box-shadow: var(--shadow); }
+      .err { color: var(--danger); font-size: 14px; }
+      a.dl { display: inline-block; margin-top: 15px; color: var(--accent); font-weight: 700; text-decoration: none; }
+      a.dl:hover { text-decoration: underline; }
+      .refine { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+      .refine label { font-size: 14px; color: var(--text); font-weight: 700; margin-bottom: 9px; }
       .refine .btn.ghost { margin-top: 12px; }
+
+      /* accessibility + responsive */
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .iconbtn:focus-visible, .btn:focus-visible { box-shadow: var(--ring); }
+      @media (max-width: 560px) {
+        .wrap { padding: 34px 16px 72px; }
+        .row, .row3 { grid-template-columns: 1fr; }
+        .card { padding: 20px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+        html { scroll-behavior: auto; }
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
       <header>
-        <div class="logo">WSTI Reel Maker</div>
-        <h1>Make a branded reel</h1>
-        <div class="sub">Drop your photos in, add a few captions, pick a format, hit render. Same WSTI look every time.</div>
+        <div class="brandrow">
+          <img id="brandLogo" src="/brand/wsti-logo.png" alt="" onerror="this.style.display='none'" />
+          <span class="wordmark" id="brandName">Western Sydney Tech Innovators</span>
+        </div>
+        <div class="logo">Reel Maker</div>
+        <h1>Make a <em>branded</em> reel<br />in a couple of minutes.</h1>
+        <div class="sub" id="brandTagline">Drop your event photos in, add a few notes, and let Claude arrange them into a story. Pick a format, hit render — the same polished look, every time.</div>
       </header>
 
       <div class="card">
-        <h2>1 · Photos &amp; story</h2>
+        <h2><span class="step">1</span> Photos &amp; story</h2>
         <div class="field">
           <label>What's this reel about? (the goal / event / story)</label>
           <textarea id="reelContext" rows="2" placeholder="e.g. Recap of our April AI Project Hub night — show the energy, the hands-on building, and invite people to join."></textarea>
@@ -119,7 +222,7 @@
       </div>
 
       <div class="card">
-        <h2>2 · Intro &amp; outro text</h2>
+        <h2><span class="step">2</span> Intro &amp; outro text</h2>
         <div class="field">
           <label>Kicker (small label above the title)</label>
           <input type="text" id="kicker" value="WESTERN SYDNEY TECH INNOVATORS" />
@@ -155,7 +258,7 @@
       </div>
 
       <div class="card">
-        <h2>3 · Look &amp; format</h2>
+        <h2><span class="step">3</span> Look &amp; format</h2>
         <div class="row3">
           <div class="field">
             <label>Format</label>
@@ -287,6 +390,27 @@
       // accent color sync
       $("accent").oninput = (e) => ($("accentText").value = e.target.value);
       $("accentText").oninput = (e) => { if (/^#[0-9a-f]{6}$/i.test(e.target.value)) $("accent").value = e.target.value; };
+
+      // --- brand: fill every default from /api/brand so the same form works for
+      // any business (just swap brand.config.json + the logo). ---
+      fetch("/api/brand").then((r) => r.json()).then((b) => {
+        document.title = (b.name ? b.name + " — " : "") + "Reel Maker";
+        if (b.logoImage) $("brandLogo").src = "/" + b.logoImage.replace(/^\//, "");
+        else $("brandLogo").style.display = "none";
+        $("brandLogo").alt = b.name || "";
+        if (b.name) $("brandName").textContent = b.name;
+        if (b.tagline) $("brandTagline").textContent = b.tagline;
+        if (b.accent && /^#[0-9a-f]{6}$/i.test(b.accent)) {
+          $("accent").value = b.accent;
+          $("accentText").value = b.accent;
+          document.documentElement.style.setProperty("--accent", b.accent);
+        }
+        const c = b.defaultCopy || {};
+        const fill = (id, v) => { if (v != null && $(id)) $(id).value = v; };
+        fill("kicker", c.kicker); fill("title", c.title); fill("subtitle", c.subtitle);
+        fill("ctaHeadline", c.ctaHeadline); fill("ctaSub", c.ctaSub);
+        fill("website", c.website); fill("handle", c.handle);
+      }).catch(() => { /* keep static fallbacks if the endpoint is unavailable */ });
 
       // music list — friendly labels, default track, and a play/pause preview
       const MUSIC_LABELS = {

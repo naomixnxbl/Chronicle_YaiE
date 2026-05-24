@@ -1,5 +1,8 @@
 import { staticFile } from "remotion";
 import type { CalculateMetadataFunction } from "remotion";
+import brand from "../brand.config.json";
+
+export { brand };
 
 export const FPS = 30;
 
@@ -31,6 +34,10 @@ export type ReelProps = {
   handle: string;
   accent: string;
   bg: string;
+  // brand identity used by the on-screen lockup
+  wordmark: string;
+  logoImage: string | null;
+  useBuiltinMark: boolean;
   perPhotoSeconds: number;
   music: string | null;
   // adjustable look (tunable via the "refine" prompt)
@@ -52,15 +59,18 @@ export const defaultProps: ReelProps = {
     { images: [staticFile("photos/7.webp")], caption: "Proudly Western Sydney" },
     { images: [staticFile("photos/8.jpg")], caption: "Your seat is waiting" },
   ],
-  kicker: "WESTERN SYDNEY TECH INNOVATORS",
-  title: "Where Western Sydney builds with AI",
-  subtitle: "3,400+ members. Beginners to builders.",
-  ctaHeadline: "Come build with us",
-  ctaSub: "Free weekly sessions across Western Sydney",
-  website: "westernsydneytechinnovators.org",
-  handle: "@westernsydneytechinnovators",
-  accent: "#3BCB97",
-  bg: "#0B121F",
+  kicker: brand.defaultCopy.kicker,
+  title: brand.defaultCopy.title,
+  subtitle: brand.defaultCopy.subtitle,
+  ctaHeadline: brand.defaultCopy.ctaHeadline,
+  ctaSub: brand.defaultCopy.ctaSub,
+  website: brand.defaultCopy.website,
+  handle: brand.defaultCopy.handle,
+  accent: brand.accent,
+  bg: brand.bg,
+  wordmark: brand.wordmark,
+  logoImage: brand.logoImage,
+  useBuiltinMark: brand.useBuiltinMark,
   perPhotoSeconds: DEFAULT_PER_PHOTO_SECONDS,
   music: null,
   captionScale: 1,

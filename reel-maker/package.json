@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.mjs",
     "studio": "remotion studio",
-    "test-render": "node test-render.mjs"
+    "test-render": "node test-render.mjs",
+    "new-brand": "node tools/new-brand.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",

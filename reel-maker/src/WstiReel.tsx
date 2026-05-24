@@ -40,23 +40,41 @@ const WstiMark: React.FC<{ size: number; color: string }> = ({ size, color }) =>
   </svg>
 );
 
-const Lockup: React.FC<{ fontSize: number; color: string }> = ({ fontSize, color }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: fontSize * 0.18 }}>
-    <span
-      style={{
-        fontFamily: BRAND,
-        fontWeight: 800,
-        color: "#fff",
-        fontSize,
-        letterSpacing: `-${fontSize * 0.015}px`,
-        lineHeight: 1,
-      }}
-    >
-      WSTI
-    </span>
-    <WstiMark size={fontSize * 0.86} color={color} />
-  </div>
-);
+// Brand lockup. WSTI keeps its exact wordmark + vector swoosh (useBuiltinMark);
+// other brands show their logo image, falling back to a plain wordmark.
+const Lockup: React.FC<{
+  fontSize: number;
+  color: string;
+  wordmark?: string;
+  logoImage?: string | null;
+  useBuiltinMark?: boolean;
+}> = ({ fontSize, color, wordmark = "WSTI", logoImage = null, useBuiltinMark = true }) => {
+  if (!useBuiltinMark && logoImage) {
+    return (
+      <Img
+        src={staticFile(logoImage)}
+        style={{ height: fontSize * 1.05, width: "auto", display: "block", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}
+      />
+    );
+  }
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: fontSize * 0.18 }}>
+      <span
+        style={{
+          fontFamily: BRAND,
+          fontWeight: 800,
+          color: "#fff",
+          fontSize,
+          letterSpacing: `-${fontSize * 0.015}px`,
+          lineHeight: 1,
+        }}
+      >
+        {wordmark}
+      </span>
+      {useBuiltinMark ? <WstiMark size={fontSize * 0.86} color={color} /> : null}
+    </div>
+  );
+};
 
 // ---------- cinematic overlays ----------
 
@@ -96,9 +114,38 @@ const LightLeak: React.FC<{ accent: string; intensity: number }> = ({ accent, in
   );
 };
 
-// Subtle teal-shadow / warm-highlight cinematic grade.
-const Grade: React.FC<{ intensity: number }> = ({ intensity }) =>
-  intensity <= 0 ? null : (
+// Cinematic colour grade. Professional mode = subtle teal-shadow / warm-highlight.
+// Energy (Instagram) mode = punchier, more saturated, with a slow drifting accent
+// wash + a moving light sheen so the frame always feels alive.
+const Grade: React.FC<{ intensity: number; accent: string; energy: number }> = ({ intensity, accent, energy }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  if (intensity <= 0) return null;
+  if (energy > 0) {
+    const t = frame / fps;
+    const sheen = 50 + Math.sin(t * 0.6) * 60; // sweeping highlight position
+    return (
+      <>
+        <AbsoluteFill
+          style={{
+            mixBlendMode: "soft-light",
+            opacity: 0.34 * intensity,
+            pointerEvents: "none",
+            background: `linear-gradient(125deg, ${accent}cc 0%, #161028 48%, #2e1030 100%)`,
+          }}
+        />
+        <AbsoluteFill
+          style={{
+            mixBlendMode: "overlay",
+            opacity: 0.16 * intensity,
+            pointerEvents: "none",
+            background: `linear-gradient(${sheen}deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%)`,
+          }}
+        />
+      </>
+    );
+  }
+  return (
     <AbsoluteFill
       style={{
         mixBlendMode: "soft-light",
@@ -108,22 +155,27 @@ const Grade: React.FC<{ intensity: number }> = ({ intensity }) =>
       }}
     />
   );
+};
 
 const Vignette: React.FC = () => (
   <AbsoluteFill style={{ boxShadow: "inset 0 0 360px rgba(0,0,0,0.6)", pointerEvents: "none" }} />
 );
 
-// Slow floating bokeh particles for depth/motion.
-const Particles: React.FC<{ accent: string }> = ({ accent }) => {
+// Floating bokeh particles for depth/motion. Energy (Instagram) mode = more
+// of them, faster rise, brighter twinkle.
+const Particles: React.FC<{ accent: string; energy: number }> = ({ accent, energy }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
-  const dots = Array.from({ length: 16 }, (_, i) => {
+  const count = energy > 0 ? 28 : 16;
+  const speedBase = energy > 0 ? 0.3 : 0.18;
+  const opMul = energy > 0 ? 0.7 : 0.45;
+  const dots = Array.from({ length: count }, (_, i) => {
     const seed = i * 97.13;
     const x = (seed % 100) / 100;
-    const speed = 0.18 + (i % 5) * 0.05;
+    const speed = speedBase + (i % 5) * 0.05;
     const y = 1.15 - (((t * speed + (seed % 53) / 53) % 1.3));
-    const size = 5 + (i % 4) * 6;
+    const size = (5 + (i % 4) * 6) * (energy > 0 ? 1.2 : 1);
     const tw = 0.35 + 0.4 * (0.5 + 0.5 * Math.sin(t * 1.3 + i));
     return { x, y, size, tw, i };
   });
@@ -140,7 +192,7 @@ const Particles: React.FC<{ accent: string }> = ({ accent }) => {
             height: d.size,
             borderRadius: "50%",
             background: d.i % 3 === 0 ? accent : "#ffffff",
-            opacity: d.tw * 0.45,
+            opacity: d.tw * opMul,
             filter: "blur(2px)",
           }}
         />
@@ -154,14 +206,18 @@ const Particles: React.FC<{ accent: string }> = ({ accent }) => {
 // Whole photo always visible (objectFit:contain). Empty space is filled with a
 // blurred, zoomed copy of the same photo — premium "blurred backdrop", works in
 // any aspect ratio. Foreground zoom stays <= 1 so the photo is never cropped.
-const PhotoLayer: React.FC<{ src: string; index: number; durationInFrames: number }> = ({
+const PhotoLayer: React.FC<{ src: string; index: number; durationInFrames: number; energy: number }> = ({
   src,
   index,
   durationInFrames,
+  energy,
 }) => {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
   const zoomIn = index % 2 === 0;
-  const bgScale = interpolate(frame, [0, durationInFrames], zoomIn ? [1.18, 1.32] : [1.32, 1.18], {
+  // Instagram pushes the backdrop motion harder for a livelier frame.
+  const bgRange = energy > 0 ? [1.22, 1.42] : [1.18, 1.32];
+  const bgScale = interpolate(frame, [0, durationInFrames], zoomIn ? bgRange : [bgRange[1], bgRange[0]], {
     extrapolateRight: "clamp",
   });
   const bgPan = interpolate(frame, [0, durationInFrames], zoomIn ? [-2.5, 2.5] : [2.5, -2.5], {
@@ -171,6 +227,13 @@ const PhotoLayer: React.FC<{ src: string; index: number; durationInFrames: numbe
   const fgScale = interpolate(frame, [0, durationInFrames], zoomIn ? [0.94, 1.0] : [1.0, 0.94], {
     extrapolateRight: "clamp",
   });
+  // snappy entrance pop (scale + settle) — only on Instagram
+  const pop = energy > 0 ? spring({ frame, fps, config: { damping: 14, stiffness: 140, mass: 0.6 } }) : 1;
+  const popScale = energy > 0 ? interpolate(pop, [0, 1], [1.06, 1]) : 1;
+  const fgFilter =
+    energy > 0
+      ? "drop-shadow(0 24px 60px rgba(0,0,0,0.6)) saturate(1.28) contrast(1.07)"
+      : "drop-shadow(0 24px 60px rgba(0,0,0,0.6))";
   return (
     <AbsoluteFill style={{ overflow: "hidden", backgroundColor: "#070b14" }}>
       <Img
@@ -180,7 +243,7 @@ const PhotoLayer: React.FC<{ src: string; index: number; durationInFrames: numbe
           height: "100%",
           objectFit: "cover",
           transform: `scale(${bgScale}) translateX(${bgPan}%)`,
-          filter: "blur(22px) brightness(0.5) saturate(1.15)",
+          filter: `blur(22px) brightness(0.5) saturate(${energy > 0 ? 1.4 : 1.15})`,
         }}
       />
       <AbsoluteFill style={{ background: "rgba(7,11,20,0.28)" }} />
@@ -191,8 +254,8 @@ const PhotoLayer: React.FC<{ src: string; index: number; durationInFrames: numbe
             width: "100%",
             height: "100%",
             objectFit: "contain",
-            transform: `scale(${fgScale})`,
-            filter: "drop-shadow(0 24px 60px rgba(0,0,0,0.6))",
+            transform: `scale(${fgScale * popScale})`,
+            filter: fgFilter,
           }}
         />
       </AbsoluteFill>
@@ -217,7 +280,8 @@ const AnimatedCaption: React.FC<{
   durationInFrames: number;
   accent: string;
   captionScale: number;
-}> = ({ text, index, durationInFrames, accent, captionScale }) => {
+  energy: number;
+}> = ({ text, index, durationInFrames, accent, captionScale, energy }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const words = text.split(/\s+/).filter(Boolean);
@@ -230,19 +294,23 @@ const AnimatedCaption: React.FC<{
 
   // size by the SHORTER side so captions stay a sensible, consistent size in
   // every format (reels / square / 16:9) — kept small so the photo shows.
+  // Instagram bumps captions ~22% bigger so they punch on a phone screen.
   const base = Math.min(width, height);
   const isWide = width > height;
+  const energyScale = energy > 0 ? 1.22 : 1;
   const font = variant === 2 ? SANS : DISPLAY;
-  const size = (variant === 0 ? base * 0.06 : variant === 1 ? base * 0.054 : base * 0.046) * captionScale;
+  const size = (variant === 0 ? base * 0.06 : variant === 1 ? base * 0.054 : base * 0.046) * captionScale * energyScale;
   const centered = variant === 2;
   const maxW = centered ? "82%" : isWide ? "60%" : "90%";
   const barReveal = spring({ frame: frame - 4, fps, config: { damping: 200, mass: 0.5 } });
+  // gentle continuous bob on Instagram so static lines never feel dead
+  const bob = energy > 0 ? Math.sin((frame / fps) * 2.4) * (base * 0.004) : 0;
 
   return (
     <div
       style={{
         opacity: outOpacity,
-        transform: `translateY(${outY}px)`,
+        transform: `translateY(${outY + bob}px)`,
         filter: `blur(${outBlur}px)`,
         maxWidth: maxW,
         textAlign: centered ? "center" : "left",
@@ -251,13 +319,13 @@ const AnimatedCaption: React.FC<{
       {variant !== 1 ? (
         <div
           style={{
-            width: base * 0.12 * barReveal,
-            height: Math.max(5, base * 0.008),
+            width: base * (energy > 0 ? 0.16 : 0.12) * barReveal,
+            height: Math.max(5, base * (energy > 0 ? 0.011 : 0.008)),
             background: accent,
             borderRadius: 99,
             margin: centered ? "0 auto" : "0",
             marginBottom: size * 0.32,
-            boxShadow: `0 0 ${base * 0.025}px ${accent}aa`,
+            boxShadow: `0 0 ${base * (energy > 0 ? 0.04 : 0.025)}px ${accent}`,
           }}
         />
       ) : null}
@@ -276,7 +344,9 @@ const AnimatedCaption: React.FC<{
         }}
       >
         {words.map((w, i) => {
-          const e = spring({ frame: frame - (6 + i * 3), fps, config: { damping: 200, mass: 0.5 } });
+          // snappier, tighter-staggered word entrance on Instagram
+          const delay = energy > 0 ? 4 + i * 2 : 6 + i * 3;
+          const e = spring({ frame: frame - delay, fps, config: { damping: 200, mass: 0.5 } });
           const wy = interpolate(e, [0, 1], [42, 0]);
           const wb = interpolate(e, [0, 1], [9, 0]);
           const highlight = variant === 1 && i === words.length - 1;
@@ -289,9 +359,11 @@ const AnimatedCaption: React.FC<{
                 transform: `translateY(${wy}px)`,
                 filter: `blur(${wb}px)`,
                 color: highlight ? accent : "#fff",
-                // subtle chromatic-aberration + soft shadow
+                // subtle chromatic-aberration + soft shadow; Instagram adds an accent glow
                 textShadow:
-                  "1.5px 0 rgba(255,40,90,0.30), -1.5px 0 rgba(40,200,255,0.30), 0 4px 30px rgba(0,0,0,0.55)",
+                  energy > 0
+                    ? `1.5px 0 rgba(255,40,90,0.34), -1.5px 0 rgba(40,200,255,0.34), 0 0 ${size * 0.5}px ${accent}66, 0 5px 34px rgba(0,0,0,0.6)`
+                    : "1.5px 0 rgba(255,40,90,0.30), -1.5px 0 rgba(40,200,255,0.30), 0 4px 30px rgba(0,0,0,0.55)",
               }}
             >
               {w}
@@ -310,16 +382,17 @@ const PhotoSlide: React.FC<{
   durationInFrames: number;
   accent: string;
   captionScale: number;
-}> = ({ src, caption, index, durationInFrames, accent, captionScale }) => {
+  energy: number;
+}> = ({ src, caption, index, durationInFrames, accent, captionScale, energy }) => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
   const base = Math.min(width, height);
   const centered = index % 3 === 2;
-  // quick light flash on entrance (reads as a snappy, trendy cut)
-  const flash = interpolate(frame, [0, 2, 9], [0.55, 0.32, 0], { extrapolateRight: "clamp" });
+  // quick light flash on entrance (reads as a snappy, trendy cut) — brighter on Instagram
+  const flash = interpolate(frame, [0, 2, 9], [energy > 0 ? 0.75 : 0.55, energy > 0 ? 0.4 : 0.32, 0], { extrapolateRight: "clamp" });
   return (
     <AbsoluteFill>
-      <PhotoLayer src={src} index={index} durationInFrames={durationInFrames} />
+      <PhotoLayer src={src} index={index} durationInFrames={durationInFrames} energy={energy} />
       <AbsoluteFill style={{ background: "#eafff6", opacity: flash, mixBlendMode: "screen", pointerEvents: "none" }} />
       <Scrim />
       {caption ? (
@@ -330,7 +403,7 @@ const PhotoSlide: React.FC<{
             padding: `0 ${base * 0.06}px ${base * 0.06}px`,
           }}
         >
-          <AnimatedCaption text={caption} index={index} durationInFrames={durationInFrames} accent={accent} captionScale={captionScale} />
+          <AnimatedCaption text={caption} index={index} durationInFrames={durationInFrames} accent={accent} captionScale={captionScale} energy={energy} />
         </AbsoluteFill>
       ) : null}
     </AbsoluteFill>
@@ -346,12 +419,13 @@ const DuoSlide: React.FC<{
   accent: string;
   bg: string;
   captionScale: number;
-}> = ({ images, caption, durationInFrames, accent, bg, captionScale }) => {
+  energy: number;
+}> = ({ images, caption, durationInFrames, accent, bg, captionScale, energy }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const base = Math.min(width, height);
   const stacked = height >= width; // reels & square stack; landscape side-by-side
-  const flash = interpolate(frame, [0, 2, 9], [0.5, 0.3, 0], { extrapolateRight: "clamp" });
+  const flash = interpolate(frame, [0, 2, 9], [energy > 0 ? 0.7 : 0.5, energy > 0 ? 0.38 : 0.3, 0], { extrapolateRight: "clamp" });
 
   const inA = spring({ frame: frame - 3, fps, config: { damping: 200, mass: 0.7 } });
   const inB = spring({ frame: frame - 7, fps, config: { damping: 200, mass: 0.7 } });
@@ -375,11 +449,11 @@ const DuoSlide: React.FC<{
     objectFit: "contain",
     opacity: op,
     transform: `translate${stacked ? "Y" : "X"}(${off}px) scale(${drift})`,
-    filter: "drop-shadow(0 18px 44px rgba(0,0,0,0.55))",
+    filter: energy > 0 ? "drop-shadow(0 18px 44px rgba(0,0,0,0.55)) saturate(1.28) contrast(1.07)" : "drop-shadow(0 18px 44px rgba(0,0,0,0.55))",
   });
 
   // caption band sizing
-  const capSize = base * 0.05 * captionScale;
+  const capSize = base * 0.05 * captionScale * (energy > 0 ? 1.2 : 1);
   const ruleLen = base * 0.07;
 
   return (
@@ -478,7 +552,7 @@ const IntroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
         }}
       >
         <div style={{ opacity: s(0), transform: `translateY(${interpolate(s(0), [0, 1], [24, 0])}px)`, marginBottom: width * 0.055 }}>
-          <Lockup fontSize={Math.round(width * 0.088)} color={props.accent} />
+          <Lockup fontSize={Math.round(width * 0.088)} color={props.accent} wordmark={props.wordmark} logoImage={props.logoImage} useBuiltinMark={props.useBuiltinMark} />
         </div>
         <WordReveal
           text={props.title}
@@ -550,7 +624,7 @@ const OutroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
       <AbsoluteFill style={{ background: `radial-gradient(120% 90% at 50% 100%, ${props.accent}33 0%, ${props.bg} 55%)` }} />
       <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", textAlign: "center", padding: `0 ${width * 0.08}px` }}>
         <div style={{ opacity: s(0), transform: `scale(${interpolate(s(0), [0, 1], [0.82, 1])})` }}>
-          <Lockup fontSize={Math.round(width * 0.16)} color={props.accent} />
+          <Lockup fontSize={Math.round(width * 0.16)} color={props.accent} wordmark={props.wordmark} logoImage={props.logoImage} useBuiltinMark={props.useBuiltinMark} />
         </div>
         <div
           style={{
@@ -646,7 +720,7 @@ const TopBar: React.FC<{ props: ReelProps; totalF: number }> = ({ props }) => {
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
       <div style={{ position: "absolute", top: pad, left: pad, opacity: 0.95, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}>
-        <Lockup fontSize={Math.round(width * 0.044)} color={props.accent} />
+        <Lockup fontSize={Math.round(width * 0.044)} color={props.accent} wordmark={props.wordmark} logoImage={props.logoImage} useBuiltinMark={props.useBuiltinMark} />
       </div>
     </AbsoluteFill>
   );
@@ -654,14 +728,23 @@ const TopBar: React.FC<{ props: ReelProps; totalF: number }> = ({ props }) => {
 
 // ---------- main ----------
 
-const photoTransition = (i: number): TransitionPresentation<Record<string, unknown>> =>
-  (i % 2 === 0
+const photoTransition = (i: number, energy: number): TransitionPresentation<Record<string, unknown>> => {
+  if (energy > 0) {
+    // punchy directional slides cycling all four ways for an energetic feel
+    const dirs = ["from-right", "from-bottom", "from-left", "from-top"] as const;
+    return slide({ direction: dirs[i % dirs.length] }) as TransitionPresentation<Record<string, unknown>>;
+  }
+  return (i % 2 === 0
     ? slide({ direction: "from-right" })
     : wipe({ direction: "from-left" })) as TransitionPresentation<Record<string, unknown>>;
+};
 
 export const WstiReel: React.FC<ReelProps> = (props) => {
   const { introF, outroF, slideFs, totalF } = getTimeline(props);
   const t = linearTiming({ durationInFrames: TRANSITION_FRAMES });
+  // Instagram (reels / 9:16) gets the bold, creative treatment; square &
+  // landscape stay clean and professional.
+  const energy = props.format === "reels" ? 1 : 0;
 
   return (
     <AbsoluteFill style={{ backgroundColor: props.bg }}>
@@ -683,6 +766,7 @@ export const WstiReel: React.FC<ReelProps> = (props) => {
                   accent={props.accent}
                   bg={props.bg}
                   captionScale={props.captionScale}
+                  energy={energy}
                 />
               ) : (
                 <PhotoSlide
@@ -692,10 +776,11 @@ export const WstiReel: React.FC<ReelProps> = (props) => {
                   durationInFrames={slideFs[i]}
                   accent={props.accent}
                   captionScale={props.captionScale}
+                  energy={energy}
                 />
               )}
             </TransitionSeries.Sequence>
-            <TransitionSeries.Transition presentation={photoTransition(i)} timing={t} />
+            <TransitionSeries.Transition presentation={photoTransition(i, energy)} timing={t} />
           </React.Fragment>
         ))}
 
@@ -705,9 +790,9 @@ export const WstiReel: React.FC<ReelProps> = (props) => {
       </TransitionSeries>
 
       {/* cinematic grade + leaks + particles + grain, above content but below the HUD */}
-      <Grade intensity={props.grade} />
-      <LightLeak accent={props.accent} intensity={props.lightLeak} />
-      {props.particles ? <Particles accent={props.accent} /> : null}
+      <Grade intensity={props.grade} accent={props.accent} energy={energy} />
+      <LightLeak accent={props.accent} intensity={props.lightLeak * (energy > 0 ? 1.6 : 1)} />
+      {props.particles ? <Particles accent={props.accent} energy={energy} /> : null}
       <Vignette />
       <Grain intensity={props.grain} />
 

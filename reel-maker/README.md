@@ -65,13 +65,50 @@ Music fades in at the start and out at the end automatically.
 
 ## Tweaking the look
 
-The default brand colours and copy live in
-[src/schema.ts](src/schema.ts) (`defaultProps`). Change them once and every new
-reel picks them up.
+All brand-specific values — name, logo, accent colour, default copy, and the
+caption "voice" Claude writes in — live in **one file:
+[brand.config.json](brand.config.json)**. The form, the video, and the AI
+prompts all read from it, so changing it rebrands the whole tool. The Instagram
+(9:16) format automatically gets a bolder, more energetic treatment; LinkedIn
+(1:1) and YouTube (16:9) stay clean and professional.
 
 The visual design — fonts, animations, intro/outro layout — is in
 [src/WstiReel.tsx](src/WstiReel.tsx). Headlines use **Anton** (the bold Brut
 look); body text uses **Inter**.
+
+---
+
+## Making a copy for another business
+
+This whole tool can be cloned for a different business in one command — the
+original (WSTI) is never touched. You provide a name and the business's website;
+it pulls the **logo + brand colour** from the site and uses Claude to write the
+**voice + default copy**, then writes a fresh, fully-branded copy in a sibling
+folder.
+
+```bash
+node tools/new-brand.mjs \
+  --name "Acme Robotics" \
+  --site https://acme.com \
+  --context "https://acme.com/about,https://acme.com/blog"   # optional extra context
+# optional: --slug acme  --accent "#FF5A36"  --out ../acme-reel-maker
+```
+
+Then:
+
+```bash
+cd ../acme-reel-maker
+npm install      # or copy/symlink the original's node_modules
+npm start        # → http://localhost:4321
+```
+
+Notes:
+- Only `--name` is required. Without `--site` it scaffolds a copy with editable
+  placeholders. Without an `ANTHROPIC_API_KEY` in `.env`, the copy gets
+  placeholder text you can edit in the new `brand.config.json`.
+- Logo/colour extraction is best-effort — review the new `brand.config.json` and
+  drop a cleaner logo into `public/brand/` if needed.
+- Everything brand-specific is in that one `brand.config.json`; no code edits.
 
 ### Live preview while editing the design
 
