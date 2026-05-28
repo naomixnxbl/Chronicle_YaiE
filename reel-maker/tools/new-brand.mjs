@@ -13,7 +13,7 @@
 //     [--out ../acme-reel-maker]
 //
 // Everything except --name is optional. With no --site it scaffolds a copy with
-// placeholder copy you can edit (or re-run later). An ANTHROPIC_API_KEY in
+// placeholder copy you can edit (or re-run later). An OPENAI_API_KEY in
 // reel-maker/.env enables the auto-written voice/copy; without it you get sensible
 // placeholders.
 
@@ -21,7 +21,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = path.join(__dirname, ".."); // the reel-maker root
@@ -202,9 +202,10 @@ const wordmarkFallback = (() => {
 })();
 
 let generated = null;
-const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
-if (anthropic && (siteText || contextText)) {
-  log("→ Writing brand voice + copy with Claude…");
+const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
+const MODEL = process.env.OPENAI_MODEL || "gpt-4o";
+if (openai && (siteText || contextText)) {
+  log("→ Writing brand voice + copy with OpenAI…");
   const SCHEMA = {
     type: "object", additionalProperties: false,
     properties: {
@@ -223,28 +224,30 @@ if (anthropic && (siteText || contextText)) {
     required: ["wordmark", "voice", "tagline", "defaultCopy"],
   };
   try {
-    const resp = await anthropic.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 1200,
-      system: [{ type: "text", text:
-        "You set up the brand identity for a photo-to-reel video maker for a specific business. " +
-        "From the website text, infer who they are and write: a short WORDMARK (the lockup label, e.g. an acronym or short name, UPPER or brand case), " +
-        "a VOICE paragraph (who they are + tone, used to steer caption writing — concrete, not generic), a one-sentence TAGLINE for the tool's homepage, " +
-        "and DEFAULT COPY for a promo reel: kicker (small label, often the org name in caps), title (<=8 words), subtitle (<=8 words), " +
-        "ctaHeadline (<=5 words), ctaSub (<=10 words), website (bare domain), handle (a plausible @handle). " +
-        "Match the business's actual field and tone. No emojis, no hashtags." }],
-      messages: [{ role: "user", content:
-        `Business name: ${name}\nWebsite: ${site || "(none)"}\n\nWEBSITE TEXT:\n${siteText || "(none)"}\n\nEXTRA CONTEXT:${contextText || " (none)"}` }],
-      output_config: { effort: "medium", format: { type: "json_schema", schema: SCHEMA } },
+    const resp = await openai.chat.completions.create({
+      model: MODEL,
+      max_completion_tokens: 1200,
+      messages: [
+        { role: "system", content:
+          "You set up the brand identity for a photo-to-reel video maker for a specific business. " +
+          "From the website text, infer who they are and write: a short WORDMARK (the lockup label, e.g. an acronym or short name, UPPER or brand case), " +
+          "a VOICE paragraph (who they are + tone, used to steer caption writing — concrete, not generic), a one-sentence TAGLINE for the tool's homepage, " +
+          "and DEFAULT COPY for a promo reel: kicker (small label, often the org name in caps), title (<=8 words), subtitle (<=8 words), " +
+          "ctaHeadline (<=5 words), ctaSub (<=10 words), website (bare domain), handle (a plausible @handle). " +
+          "Match the business's actual field and tone. No emojis, no hashtags." },
+        { role: "user", content:
+          `Business name: ${name}\nWebsite: ${site || "(none)"}\n\nWEBSITE TEXT:\n${siteText || "(none)"}\n\nEXTRA CONTEXT:${contextText || " (none)"}` },
+      ],
+      response_format: { type: "json_schema", json_schema: { name: "brand", strict: true, schema: SCHEMA } },
     });
-    const tb = resp.content.find((b) => b.type === "text");
-    if (tb) generated = JSON.parse(tb.text);
+    const msg = resp.choices?.[0]?.message;
+    if (msg?.content && !msg.refusal) generated = JSON.parse(msg.content);
     log("  ✓ brand voice + copy written");
   } catch (e) {
-    log("  ⚠ Claude step failed (" + (e.message || e) + ") — using placeholders.");
+    log("  ⚠ OpenAI step failed (" + (e.message || e) + ") — using placeholders.");
   }
-} else if (!anthropic) {
-  log("→ No ANTHROPIC_API_KEY — skipping auto copy (placeholders used). Add a key to reel-maker/.env and re-run, or edit brand.config.json.");
+} else if (!openai) {
+  log("→ No OPENAI_API_KEY — skipping auto copy (placeholders used). Add a key to reel-maker/.env and re-run, or edit brand.config.json.");
 }
 
 // ---------- 4. write brand.config.json ----------

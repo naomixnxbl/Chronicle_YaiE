@@ -7,12 +7,12 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import multer from "multer";
 import sharp from "sharp";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { bundle } from "@remotion/bundler";
 import { selectComposition, renderMedia, ensureBrowser } from "@remotion/renderer";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Load reel-maker/.env (for ANTHROPIC_API_KEY) if present.
+// Load reel-maker/.env (for OPENAI_API_KEY) if present.
 try {
   process.loadEnvFile(path.join(__dirname, ".env"));
 } catch {
@@ -20,7 +20,8 @@ try {
 }
 const PORT = process.env.PORT || 4321;
 const BASE = `http://localhost:${PORT}`;
-const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
+const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
+const MODEL = process.env.OPENAI_MODEL || "gpt-4o"; // vision + structured outputs
 
 const clamp = (v, lo, hi, dflt) => {
   const n = Number(v);
@@ -109,7 +110,7 @@ app.get("/api/music", (req, res) => {
   res.json(files);
 });
 
-// ---- narrative: arrange photos into a story + write captions (Claude vision) ----
+// ---- narrative: arrange photos into a story + write captions (OpenAI vision) ----
 const STORY_SYSTEM = `You are the story editor for ${brand.name}.
 
 BRAND & VOICE: ${brand.voice}
@@ -127,9 +128,10 @@ Return "sequence" as a list of slides. Each slide has "indices" (ONE or TWO phot
 
 Caption voice — be CREATIVE and ON-BRAND (match the voice above):
 - 2 to 5 words. Vivid, human, a little playful. Celebrate the people, the energy, and what makes this community special.
+- Write them lowercase or in natural sentence case — NEVER Title Case Every Word. They should feel spoken and human (e.g. "where curiosity meets code", "3,400 strong, and growing"), not like ad headlines ("Ideas In Action").
 - Reflect what's actually in the photo(s). For a pair, write one caption that ties both together.
-- Avoid generic/corporate lines ("great event", "amazing time"). No emojis, no hashtags, no end punctuation.
-- Title <= 8 words. Subtitle <= 8 words. Closing headline <= 5 words. Closing sub <= 10 words.`;
+- Avoid generic/corporate lines ("great event", "amazing time", "join the movement"). No emojis, no hashtags, no end punctuation.
+- Title <= 8 words. Subtitle <= 8 words. Closing headline <= 5 words. Closing sub <= 10 words. Same human, lowercase-leaning tone for these.`;
 
 const STORY_SCHEMA = {
   type: "object",
@@ -157,9 +159,9 @@ const STORY_SCHEMA = {
 
 app.post("/story", memUpload.array("photos", 20), async (req, res) => {
   try {
-    if (!anthropic) {
+    if (!openai) {
       return res.status(400).json({
-        error: "Narrative AI is off. Add ANTHROPIC_API_KEY to reel-maker/.env and restart the server.",
+        error: "Narrative AI is off. Add OPENAI_API_KEY to reel-maker/.env and restart the server.",
       });
     }
     const meta = JSON.parse(req.body.meta || "{}");
@@ -184,7 +186,7 @@ app.post("/story", memUpload.array("photos", 20), async (req, res) => {
           `Here are ${files.length} photos, each shown with its index in [brackets] and a short note. Study every image.`,
       },
     ];
-    // Downscale every photo before sending to Claude — keeps the request small
+    // Downscale every photo before sending to the model — keeps the request small
     // (full-res phone photos blow past the API size limit) and is plenty for vision.
     for (let i = 0; i < files.length; i++) {
       const small = await sharp(files[i].buffer)
@@ -193,25 +195,28 @@ app.post("/story", memUpload.array("photos", 20), async (req, res) => {
         .jpeg({ quality: 72 })
         .toBuffer();
       content.push({ type: "text", text: `Photo [${i}] — note: ${(contexts[i] || "").trim() || "(no note)"}` });
-      content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: small.toString("base64") } });
+      content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${small.toString("base64")}` } });
     }
     content.push({
       type: "text",
       text: "Now return the reel as JSON: the photos in the best narrative order (each with index + caption), plus title, subtitle, ctaHeadline, ctaSub.",
     });
 
-    const response = await anthropic.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 2048,
-      system: [{ type: "text", text: STORY_SYSTEM, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content }],
-      output_config: { effort: "high", format: { type: "json_schema", schema: STORY_SCHEMA } },
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      max_completion_tokens: 2048,
+      messages: [
+        { role: "system", content: STORY_SYSTEM },
+        { role: "user", content },
+      ],
+      response_format: { type: "json_schema", json_schema: { name: "reel", strict: true, schema: STORY_SCHEMA } },
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock) throw new Error("No text returned from model");
-    const data = JSON.parse(textBlock.text);
-    console.log(`Story: ordered ${data.sequence?.length} photos (cache read ${response.usage?.cache_read_input_tokens ?? 0} tok)`);
+    const msg = response.choices?.[0]?.message;
+    if (msg?.refusal) throw new Error(msg.refusal);
+    if (!msg?.content) throw new Error("No text returned from model");
+    const data = JSON.parse(msg.content);
+    console.log(`Story: ordered ${data.sequence?.length} photos (${response.usage?.total_tokens ?? 0} tok)`);
     res.json(data);
   } catch (err) {
     console.error("Story failed:", err);
@@ -269,16 +274,16 @@ const REFINE_SCHEMA = {
 
 app.post("/refine", async (req, res) => {
   try {
-    if (!anthropic) return res.status(400).json({ error: "Refine needs ANTHROPIC_API_KEY in reel-maker/.env." });
+    if (!openai) return res.status(400).json({ error: "Refine needs OPENAI_API_KEY in reel-maker/.env." });
     const { current, instruction } = req.body || {};
     if (!instruction || !current) return res.status(400).json({ error: "Missing instruction or current settings." });
     const tracks = fs.readdirSync(MUSIC_DIR).filter((f) => /\.(mp3|m4a|aac|wav|ogg)$/i.test(f));
 
-    const response = await anthropic.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 1500,
-      system: [{ type: "text", text: REFINE_SYSTEM, cache_control: { type: "ephemeral" } }],
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      max_completion_tokens: 1500,
       messages: [
+        { role: "system", content: REFINE_SYSTEM },
         {
           role: "user",
           content:
@@ -287,11 +292,12 @@ app.post("/refine", async (req, res) => {
             `Instruction: ${instruction}`,
         },
       ],
-      output_config: { effort: "medium", format: { type: "json_schema", schema: REFINE_SCHEMA } },
+      response_format: { type: "json_schema", json_schema: { name: "settings", strict: true, schema: REFINE_SCHEMA } },
     });
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock) throw new Error("No response from model");
-    res.json(JSON.parse(textBlock.text));
+    const msg = response.choices?.[0]?.message;
+    if (msg?.refusal) throw new Error(msg.refusal);
+    if (!msg?.content) throw new Error("No response from model");
+    res.json(JSON.parse(msg.content));
   } catch (err) {
     console.error("Refine failed:", err);
     res.status(500).json({ error: String(err.message || err) });

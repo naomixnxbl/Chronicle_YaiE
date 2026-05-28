@@ -351,6 +351,7 @@
         <div id="status"></div>
         <div class="pagenav">
           <button class="navbtn" id="backTo2" type="button">← Edit settings &amp; re-render</button>
+          <button class="btn" id="createNew" type="button" style="width:auto">+ Create new reel</button>
         </div>
       </section>
     </div>
@@ -382,6 +383,13 @@
       $("skipStory").onclick = () => goTo("page2");
       $("backTo1").onclick = () => goTo("page1");
       $("backTo2").onclick = () => goTo("page2");
+      // start a brand-new reel: wipe the current draft + photos and reload fresh
+      $("createNew").onclick = async () => {
+        if (!confirm("Start a new reel? This clears the current photos, captions and settings.")) return;
+        try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
+        await dbClear();
+        location.reload();
+      };
 
       // --- draft persistence ---------------------------------------------
       // sessionStorage holds the light draft (text, captions, page, jobId): it

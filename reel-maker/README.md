@@ -66,7 +66,7 @@ Music fades in at the start and out at the end automatically.
 ## Tweaking the look
 
 All brand-specific values — name, logo, accent colour, default copy, and the
-caption "voice" Claude writes in — live in **one file:
+caption "voice" the AI writes in — live in **one file:
 [brand.config.json](brand.config.json)**. The form, the video, and the AI
 prompts all read from it, so changing it rebrands the whole tool. The Instagram
 (9:16) format automatically gets a bolder, more energetic treatment; LinkedIn
@@ -82,7 +82,7 @@ look); body text uses **Inter**.
 
 This whole tool can be cloned for a different business in one command — the
 original (WSTI) is never touched. You provide a name and the business's website;
-it pulls the **logo + brand colour** from the site and uses Claude to write the
+it pulls the **logo + brand colour** from the site and uses OpenAI to write the
 **voice + default copy**, then writes a fresh, fully-branded copy in a sibling
 folder.
 
@@ -104,7 +104,7 @@ npm start        # → http://localhost:4321
 
 Notes:
 - Only `--name` is required. Without `--site` it scaffolds a copy with editable
-  placeholders. Without an `ANTHROPIC_API_KEY` in `.env`, the copy gets
+  placeholders. Without an `OPENAI_API_KEY` in `.env`, the copy gets
   placeholder text you can edit in the new `brand.config.json`.
 - Logo/colour extraction is best-effort — review the new `brand.config.json` and
   drop a cleaner logo into `public/brand/` if needed.

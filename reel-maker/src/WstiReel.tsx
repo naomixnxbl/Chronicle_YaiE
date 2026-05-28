@@ -17,6 +17,7 @@ import { wipe } from "@remotion/transitions/wipe";
 import { loadFont as loadAnton } from "@remotion/google-fonts/Anton";
 import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
 import { loadFont as loadMontserrat } from "@remotion/google-fonts/Montserrat";
+import { loadFont as loadCaveat } from "@remotion/google-fonts/Caveat";
 import { type ReelProps, getTimeline, TRANSITION_FRAMES } from "./schema";
 
 const { fontFamily: DISPLAY } = loadAnton();
@@ -30,6 +31,34 @@ const { fontFamily: BRAND } = loadMontserrat("normal", {
   subsets: ["latin"],
   ignoreTooManyRequestsWarning: true,
 });
+const { fontFamily: HAND } = loadCaveat("normal", {
+  weights: ["600", "700"],
+  subsets: ["latin"],
+  ignoreTooManyRequestsWarning: true,
+});
+
+// ---------- instagram "energy" helpers ----------
+
+// Custom transition: zoom + blur + flash — the classic punchy Reels cut.
+const ZoomBlur: React.FC<{
+  presentationDirection: "entering" | "exiting";
+  presentationProgress: number;
+  passedProps: Record<string, unknown>;
+  children: React.ReactNode;
+}> = ({ presentationDirection, presentationProgress, children }) => {
+  const p = presentationProgress;
+  const entering = presentationDirection === "entering";
+  const scale = entering ? interpolate(p, [0, 1], [1.35, 1]) : interpolate(p, [0, 1], [1, 0.8]);
+  const blur = entering ? interpolate(p, [0, 1], [16, 0]) : interpolate(p, [0, 1], [0, 16]);
+  const opacity = entering ? interpolate(p, [0, 0.35, 1], [0, 1, 1]) : interpolate(p, [0, 1], [1, 0]);
+  return (
+    <AbsoluteFill style={{ transform: `scale(${scale})`, filter: `blur(${blur}px)`, opacity }}>
+      {children}
+    </AbsoluteFill>
+  );
+};
+const zoomBlur = (): TransitionPresentation<Record<string, unknown>> =>
+  ({ component: ZoomBlur, props: {} } as unknown as TransitionPresentation<Record<string, unknown>>);
 
 // ---------- brand ----------
 
@@ -206,14 +235,17 @@ const Particles: React.FC<{ accent: string; energy: number }> = ({ accent, energ
 // Whole photo always visible (objectFit:contain). Empty space is filled with a
 // blurred, zoomed copy of the same photo — premium "blurred backdrop", works in
 // any aspect ratio. Foreground zoom stays <= 1 so the photo is never cropped.
-const PhotoLayer: React.FC<{ src: string; index: number; durationInFrames: number; energy: number }> = ({
+type IgStyle = "polaroid" | "contain";
+const PhotoLayer: React.FC<{ src: string; caption?: string; index: number; durationInFrames: number; energy: number; igStyle?: IgStyle }> = ({
   src,
+  caption,
   index,
   durationInFrames,
   energy,
+  igStyle = "contain",
 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
   const zoomIn = index % 2 === 0;
   // Instagram pushes the backdrop motion harder for a livelier frame.
   const bgRange = energy > 0 ? [1.22, 1.42] : [1.18, 1.32];
@@ -223,17 +255,17 @@ const PhotoLayer: React.FC<{ src: string; index: number; durationInFrames: numbe
   const bgPan = interpolate(frame, [0, durationInFrames], zoomIn ? [-2.5, 2.5] : [2.5, -2.5], {
     extrapolateRight: "clamp",
   });
-  // gentle drift on the photo itself — capped at 1.0 so the full frame is never cropped
-  const fgScale = interpolate(frame, [0, durationInFrames], zoomIn ? [0.94, 1.0] : [1.0, 0.94], {
-    extrapolateRight: "clamp",
-  });
-  // snappy entrance pop (scale + settle) — only on Instagram
-  const pop = energy > 0 ? spring({ frame, fps, config: { damping: 14, stiffness: 140, mass: 0.6 } }) : 1;
-  const popScale = energy > 0 ? interpolate(pop, [0, 1], [1.06, 1]) : 1;
-  const fgFilter =
-    energy > 0
-      ? "drop-shadow(0 24px 60px rgba(0,0,0,0.6)) saturate(1.28) contrast(1.07)"
-      : "drop-shadow(0 24px 60px rgba(0,0,0,0.6))";
+  // Professional formats: gentle Ken Burns drift (never crops). Instagram holds
+  // the photo still — no in/out pulsing.
+  const base = Math.min(width, height);
+  const fgScale = interpolate(frame, [0, durationInFrames], zoomIn ? [0.94, 1.0] : [1.0, 0.94], { extrapolateRight: "clamp" });
+  // Instagram: a polaroid CARD that slams in once with a slight tilt + overshoot, then holds still
+  const tilt = zoomIn ? -2.5 : 2.5;
+  const slam = energy > 0 ? spring({ frame, fps, config: { damping: 11, stiffness: 130, mass: 0.7 } }) : 1;
+  const cardRot = interpolate(slam, [0, 1], [tilt * 3.5, tilt]);
+  const cardScale = interpolate(slam, [0, 1], [1.18, 1]);
+  // handwritten caption appears on the polaroid a beat after it lands
+  const capReveal = spring({ frame: frame - 12, fps, config: { damping: 200, mass: 0.6 } });
   return (
     <AbsoluteFill style={{ overflow: "hidden", backgroundColor: "#070b14" }}>
       <Img
@@ -248,16 +280,56 @@ const PhotoLayer: React.FC<{ src: string; index: number; durationInFrames: numbe
       />
       <AbsoluteFill style={{ background: "rgba(7,11,20,0.28)" }} />
       <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-        <Img
-          src={src}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            transform: `scale(${fgScale * popScale})`,
-            filter: fgFilter,
-          }}
-        />
+        {energy > 0 && igStyle === "polaroid" ? (
+          // tilted white photo-card with a handwritten caption
+          <div
+            style={{
+              width: "84%",
+              height: "70%",
+              background: "#fbfbf7",
+              padding: base * 0.014,
+              borderRadius: base * 0.022,
+              boxShadow: "0 34px 90px -22px rgba(0,0,0,0.85)",
+              transform: `rotate(${cardRot}deg) scale(${cardScale})`,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ flex: 1, minHeight: 0, overflow: "hidden", borderRadius: base * 0.008, display: "flex", background: "#eef0f2" }}>
+              <Img src={src} style={{ width: "100%", height: "100%", objectFit: "contain", filter: "saturate(1.2) contrast(1.05)" }} />
+            </div>
+            {caption ? (
+              <div
+                style={{
+                  flex: "none",
+                  minHeight: base * 0.12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: `${base * 0.012}px ${base * 0.02}px 0`,
+                  opacity: capReveal,
+                  transform: `translateY(${(1 - capReveal) * 8}px)`,
+                }}
+              >
+                <div style={{ fontFamily: HAND, fontWeight: 700, color: "#14233d", fontSize: base * 0.062, lineHeight: 1.0, textAlign: "center", transform: `rotate(${tilt * 0.5}deg)` }}>
+                  {caption}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : energy > 0 ? (
+          // framed: the WHOLE photo on the blurred backdrop — never cropped
+          <Img
+            src={src}
+            style={{ width: "100%", height: "100%", objectFit: "contain", transform: "scale(0.97)", filter: "drop-shadow(0 24px 60px rgba(0,0,0,0.65)) saturate(1.2) contrast(1.05)" }}
+          />
+        ) : (
+          <Img
+            src={src}
+            style={{ width: "100%", height: "100%", objectFit: "contain", transform: `scale(${fgScale})`, filter: "drop-shadow(0 24px 60px rgba(0,0,0,0.6))" }}
+          />
+        )}
       </AbsoluteFill>
     </AbsoluteFill>
   );
@@ -316,16 +388,16 @@ const AnimatedCaption: React.FC<{
         textAlign: centered ? "center" : "left",
       }}
     >
-      {variant !== 1 ? (
+      {variant !== 1 && !(energy > 0) ? (
         <div
           style={{
-            width: base * (energy > 0 ? 0.16 : 0.12) * barReveal,
-            height: Math.max(5, base * (energy > 0 ? 0.011 : 0.008)),
+            width: base * 0.12 * barReveal,
+            height: Math.max(5, base * 0.008),
             background: accent,
             borderRadius: 99,
             margin: centered ? "0 auto" : "0",
             marginBottom: size * 0.32,
-            boxShadow: `0 0 ${base * (energy > 0 ? 0.04 : 0.025)}px ${accent}`,
+            boxShadow: `0 0 ${base * 0.025}px ${accent}`,
           }}
         />
       ) : null}
@@ -333,7 +405,7 @@ const AnimatedCaption: React.FC<{
         style={{
           display: "flex",
           flexWrap: "wrap",
-          gap: `${size * 0.04}px ${size * 0.22}px`,
+          gap: energy > 0 ? `${size * 0.18}px ${size * 0.16}px` : `${size * 0.04}px ${size * 0.22}px`,
           justifyContent: centered ? "center" : "flex-start",
           fontFamily: font,
           fontWeight: variant === 2 ? 800 : 400,
@@ -349,21 +421,36 @@ const AnimatedCaption: React.FC<{
           const e = spring({ frame: frame - delay, fps, config: { damping: 200, mass: 0.5 } });
           const wy = interpolate(e, [0, 1], [42, 0]);
           const wb = interpolate(e, [0, 1], [9, 0]);
+          // kinetic: each word punches in big, then settles (Instagram only)
+          const scalePop = energy > 0
+            ? interpolate(frame, [delay, delay + 3, delay + 10], [1.5, 1.1, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+            : 1;
+          // karaoke: the word is "active" (accent box) right as it lands, then settles to a dark box
+          const justLanded = energy > 0 && frame >= delay + 1 && frame < delay + 11;
           const highlight = variant === 1 && i === words.length - 1;
+          // CapCut-style caption boxes on Instagram
+          const boxStyle: React.CSSProperties = energy > 0
+            ? {
+                background: justLanded ? accent : "rgba(8,12,22,0.66)",
+                color: justLanded ? "#08121e" : "#fff",
+                padding: `${size * 0.1}px ${size * 0.2}px`,
+                borderRadius: size * 0.16,
+                boxShadow: justLanded ? `0 0 ${size * 0.5}px ${accent}88` : "0 6px 18px rgba(0,0,0,0.45)",
+                textShadow: "none",
+              }
+            : {
+                color: highlight ? accent : "#fff",
+                textShadow: "1.5px 0 rgba(255,40,90,0.30), -1.5px 0 rgba(40,200,255,0.30), 0 4px 30px rgba(0,0,0,0.55)",
+              };
           return (
             <span
               key={i}
               style={{
                 display: "inline-block",
                 opacity: e,
-                transform: `translateY(${wy}px)`,
+                transform: `translateY(${wy}px) scale(${scalePop})`,
                 filter: `blur(${wb}px)`,
-                color: highlight ? accent : "#fff",
-                // subtle chromatic-aberration + soft shadow; Instagram adds an accent glow
-                textShadow:
-                  energy > 0
-                    ? `1.5px 0 rgba(255,40,90,0.34), -1.5px 0 rgba(40,200,255,0.34), 0 0 ${size * 0.5}px ${accent}66, 0 5px 34px rgba(0,0,0,0.6)`
-                    : "1.5px 0 rgba(255,40,90,0.30), -1.5px 0 rgba(40,200,255,0.30), 0 4px 30px rgba(0,0,0,0.55)",
+                ...boxStyle,
               }}
             >
               {w}
@@ -375,27 +462,133 @@ const AnimatedCaption: React.FC<{
   );
 };
 
+// Instagram story-style segmented progress bar across the top.
+const StoryProgress: React.FC<{ index: number; count: number; durationInFrames: number }> = ({ index, count, durationInFrames }) => {
+  const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const pad = Math.min(width, height) * 0.045;
+  const within = interpolate(frame, [0, durationInFrames], [0, 1], { extrapolateRight: "clamp" });
+  return (
+    <div style={{ position: "absolute", top: pad * 0.5, left: pad, right: pad, display: "flex", gap: Math.max(4, width * 0.006), pointerEvents: "none", zIndex: 5 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} style={{ flex: 1, height: Math.max(3, width * 0.0042), borderRadius: 99, background: "rgba(255,255,255,0.28)", overflow: "hidden" }}>
+          <div style={{ height: "100%", width: i < index ? "100%" : i === index ? `${within * 100}%` : "0%", background: "#fff" }} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Small twinkling accent sticker.
+const Sparkle: React.FC<{ accent: string; size: number; style?: React.CSSProperties }> = ({ accent, size, style }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const tw = 0.5 + 0.5 * Math.sin((frame / fps) * 6);
+  const rot = (frame / fps) * 35;
+  return (
+    <div style={{ position: "absolute", color: accent, fontSize: size, lineHeight: 1, opacity: 0.25 + 0.6 * tw, transform: `rotate(${rot}deg)`, textShadow: `0 0 ${size * 0.5}px ${accent}`, pointerEvents: "none", zIndex: 5, ...style }}>✦</div>
+  );
+};
+
+// Spring pop-in wrapper for stickers (scale-up + overshoot + slight rotate).
+const StickerPop: React.FC<{ delay: number; rotate?: number; children: React.ReactNode; style?: React.CSSProperties }> = ({ delay, rotate = 0, children, style }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const s = spring({ frame: frame - delay, fps, config: { damping: 9, stiffness: 150, mass: 0.6 } });
+  const sc = interpolate(s, [0, 1], [0, 1]);
+  const wobble = Math.sin((frame / fps) * 3 + delay) * 2; // gentle life after popping
+  return (
+    <div style={{ position: "absolute", transform: `scale(${sc}) rotate(${rotate + wobble}deg)`, opacity: s > 0.03 ? 1 : 0, pointerEvents: "none", zIndex: 6, ...style }}>
+      {children}
+    </div>
+  );
+};
+
+const LocationPin: React.FC<{ size: number; color: string }> = ({ size, color }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "block", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.5))" }}>
+    <path d="M12 2C7.6 2 4 5.6 4 10c0 5.5 8 12 8 12s8-6.5 8-12c0-4.4-3.6-8-8-8z" fill={color} stroke="#fff" strokeWidth={1.3} />
+    <circle cx="12" cy="10" r="3.1" fill="#fff" />
+  </svg>
+);
+
+const Arrow: React.FC<{ size: number; color: string }> = ({ size, color }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ display: "block", filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.5))" }}>
+    <path d="M50 12 C 30 14, 16 26, 15 48" stroke={color} strokeWidth={5} strokeLinecap="round" />
+    <path d="M15 48 L 8 38 M15 48 L 27 44" stroke={color} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+// A curated, per-slide combo of stickers — varied so it never feels repetitive.
+// Kept in the upper area so it never collides with the bottom captions.
+const StickerSet: React.FC<{ index: number; accent: string; base: number }> = ({ index, accent, base }) => {
+  const v = index % 4;
+  const star = <div style={{ color: accent, fontSize: base * 0.06, textShadow: `0 0 ${base * 0.03}px ${accent}` }}>✦</div>;
+  return (
+    <>
+      {v === 0 && (
+        <>
+          <StickerPop delay={6} style={{ top: base * 0.12, right: base * 0.09 }}><LocationPin size={base * 0.08} color={accent} /></StickerPop>
+          <StickerPop delay={12} style={{ top: base * 0.26, right: base * 0.2 }}>{star}</StickerPop>
+        </>
+      )}
+      {v === 1 && (
+        <>
+          <StickerPop delay={6} style={{ top: base * 0.12, right: base * 0.1 }}><LocationPin size={base * 0.085} color={accent} /></StickerPop>
+          <StickerPop delay={11} rotate={8} style={{ top: base * 0.3, left: base * 0.08 }}><Arrow size={base * 0.12} color={accent} /></StickerPop>
+        </>
+      )}
+      {v === 2 && (
+        <>
+          <StickerPop delay={6} style={{ top: base * 0.14, left: base * 0.09 }}>{star}</StickerPop>
+          <StickerPop delay={10} style={{ top: base * 0.2, right: base * 0.1 }}><div style={{ color: accent, fontSize: base * 0.045, textShadow: `0 0 ${base * 0.025}px ${accent}` }}>✦</div></StickerPop>
+          <StickerPop delay={14} style={{ top: base * 0.28, right: base * 0.22 }}><LocationPin size={base * 0.06} color={accent} /></StickerPop>
+        </>
+      )}
+      {v === 3 && (
+        <>
+          <StickerPop delay={6} rotate={-8} style={{ top: base * 0.13, left: base * 0.08 }}><Arrow size={base * 0.13} color={accent} /></StickerPop>
+          <StickerPop delay={12} style={{ top: base * 0.16, right: base * 0.1 }}>{star}</StickerPop>
+        </>
+      )}
+    </>
+  );
+};
+
 const PhotoSlide: React.FC<{
   src: string;
   caption?: string;
   index: number;
+  slideCount: number;
   durationInFrames: number;
   accent: string;
   captionScale: number;
   energy: number;
-}> = ({ src, caption, index, durationInFrames, accent, captionScale, energy }) => {
+}> = ({ src, caption, index, slideCount, durationInFrames, accent, captionScale, energy }) => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
   const base = Math.min(width, height);
   const centered = index % 3 === 2;
+  // Instagram: alternate framed (whole photo on blurred backdrop) and polaroid —
+  // both show the ENTIRE photo, never cropped. Just varied treatments.
+  const IG_STYLES: IgStyle[] = ["contain", "polaroid", "contain", "polaroid", "contain", "polaroid"];
+  const igStyle: IgStyle = energy > 0 ? IG_STYLES[index % IG_STYLES.length] : "contain";
+  // polaroid carries its own handwritten caption; the others use the bottom caption.
+  const bottomCaption = !!caption && igStyle !== "polaroid";
   // quick light flash on entrance (reads as a snappy, trendy cut) — brighter on Instagram
   const flash = interpolate(frame, [0, 2, 9], [energy > 0 ? 0.75 : 0.55, energy > 0 ? 0.4 : 0.32, 0], { extrapolateRight: "clamp" });
   return (
     <AbsoluteFill>
-      <PhotoLayer src={src} index={index} durationInFrames={durationInFrames} energy={energy} />
-      <AbsoluteFill style={{ background: "#eafff6", opacity: flash, mixBlendMode: "screen", pointerEvents: "none" }} />
-      <Scrim />
-      {caption ? (
+      <PhotoLayer src={src} caption={caption} index={index} durationInFrames={durationInFrames} energy={energy} igStyle={igStyle} />
+      <AbsoluteFill style={{ background: energy > 0 ? accent : "#eafff6", opacity: flash, mixBlendMode: "screen", pointerEvents: "none" }} />
+      {/* scrim behind the bottom caption (polaroid carries its caption on the card, so no scrim) */}
+      {bottomCaption || energy === 0 ? <Scrim /> : null}
+      {energy > 0 ? (
+        <>
+          <StoryProgress index={index} count={slideCount} durationInFrames={durationInFrames} />
+          <StickerSet index={index} accent={accent} base={base} />
+        </>
+      ) : null}
+      {bottomCaption || (caption && energy === 0) ? (
         <AbsoluteFill
           style={{
             justifyContent: "flex-end",
@@ -415,12 +608,14 @@ const PhotoSlide: React.FC<{
 const DuoSlide: React.FC<{
   images: string[];
   caption?: string;
+  index: number;
+  slideCount: number;
   durationInFrames: number;
   accent: string;
   bg: string;
   captionScale: number;
   energy: number;
-}> = ({ images, caption, durationInFrames, accent, bg, captionScale, energy }) => {
+}> = ({ images, caption, index, slideCount, durationInFrames, accent, bg, captionScale, energy }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const base = Math.min(width, height);
@@ -499,7 +694,13 @@ const DuoSlide: React.FC<{
           <Img src={images[1]} style={imgStyle(offB, inB)} />
         </div>
       </AbsoluteFill>
-      <AbsoluteFill style={{ background: "#eafff6", opacity: flash, mixBlendMode: "screen", pointerEvents: "none" }} />
+      <AbsoluteFill style={{ background: energy > 0 ? accent : "#eafff6", opacity: flash, mixBlendMode: "screen", pointerEvents: "none" }} />
+      {energy > 0 ? (
+        <>
+          <StoryProgress index={index} count={slideCount} durationInFrames={durationInFrames} />
+          <Sparkle accent={accent} size={base * 0.045} style={{ top: base * 0.16, right: base * 0.08 }} />
+        </>
+      ) : null}
       <Vignette />
     </AbsoluteFill>
   );
@@ -730,9 +931,14 @@ const TopBar: React.FC<{ props: ReelProps; totalF: number }> = ({ props }) => {
 
 const photoTransition = (i: number, energy: number): TransitionPresentation<Record<string, unknown>> => {
   if (energy > 0) {
-    // punchy directional slides cycling all four ways for an energetic feel
-    const dirs = ["from-right", "from-bottom", "from-left", "from-top"] as const;
-    return slide({ direction: dirs[i % dirs.length] }) as TransitionPresentation<Record<string, unknown>>;
+    // cycle punchy cuts: zoom-blur, then fast directional whip-slides
+    const cuts = [
+      zoomBlur,
+      () => slide({ direction: "from-right" }) as TransitionPresentation<Record<string, unknown>>,
+      () => slide({ direction: "from-bottom" }) as TransitionPresentation<Record<string, unknown>>,
+      () => slide({ direction: "from-left" }) as TransitionPresentation<Record<string, unknown>>,
+    ];
+    return cuts[i % cuts.length]();
   }
   return (i % 2 === 0
     ? slide({ direction: "from-right" })
@@ -762,6 +968,8 @@ export const WstiReel: React.FC<ReelProps> = (props) => {
                 <DuoSlide
                   images={s.images}
                   caption={s.caption}
+                  index={i}
+                  slideCount={props.slides.length}
                   durationInFrames={slideFs[i]}
                   accent={props.accent}
                   bg={props.bg}
@@ -773,6 +981,7 @@ export const WstiReel: React.FC<ReelProps> = (props) => {
                   src={s.images[0]}
                   caption={s.caption}
                   index={i}
+                  slideCount={props.slides.length}
                   durationInFrames={slideFs[i]}
                   accent={props.accent}
                   captionScale={props.captionScale}
