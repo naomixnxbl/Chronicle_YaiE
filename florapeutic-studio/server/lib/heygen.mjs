@@ -1,5 +1,7 @@
 // HeyGen video engine — the Video Agent auto-generates the whole video
 // (script, presenter, b-roll, captions, music) from an on-brand brief.
+import fs from "node:fs";
+
 const BASE = "https://api.heygen.com";
 
 // Build the Video Agent brief locally (NO OpenAI) — HeyGen's agent writes the
