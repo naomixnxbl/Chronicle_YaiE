@@ -1,0 +1,28 @@
+{
+  "name": "florapeutic-studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Florapeutic Content Studio — turn your audio into on-brand educational videos.",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server/index.mjs",
+    "studio": "concurrently -k -n web,api -c magenta,cyan \"npm run dev\" \"npm run server\"",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

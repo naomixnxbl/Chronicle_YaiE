@@ -1,0 +1,16 @@
+node_modules
+dist
+# secrets — never commit
+.env
+.env.local
+.env.*.local
+# generated videos & uploads (large, per-run)
+public/generated
+server/.uploads
+*.log
+.DS_Store
+.vite
+
+# build artifacts & sample media
+tsconfig.tsbuildinfo
+public/*.mp4
