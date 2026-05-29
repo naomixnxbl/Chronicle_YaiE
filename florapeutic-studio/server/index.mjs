@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { keys, ROOT } from "./lib/env.mjs";
 import { startJob, getJob } from "./lib/pipeline.mjs";
-import { enhanceScriptOpenAI } from "./lib/openai.mjs";
+import { enhanceScriptOpenAI, transcribe } from "./lib/openai.mjs";
 
 const PORT = 5181;
 const app = express();
@@ -54,6 +54,19 @@ app.post("/api/enhance", async (req, res) => {
     if (!keys.openai) return res.status(400).json({ error: "OpenAI key needed for enhancement." });
     const text = await enhanceScriptOpenAI(keys.openai, req.body?.draft || "");
     res.json({ script: text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Transcribe uploaded audio via the local backend so the OpenAI key never leaves the server.
+app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
+  try {
+    if (!keys.openai) return res.status(400).json({ error: "OpenAI key needed for transcription." });
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "Upload an audio file under the 'audio' field." });
+    const transcript = await transcribe(keys.openai, file.path, file.originalname || "audio.webm");
+    res.json({ transcript });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

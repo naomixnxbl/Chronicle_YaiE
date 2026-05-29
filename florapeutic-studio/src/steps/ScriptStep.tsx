@@ -28,14 +28,13 @@ export default function ScriptStep({
   // and seed the script with what was actually taught.
   useEffect(() => {
     if (triedTranscribe.current) return;
-    if (!project.audioBlob || project.transcript || !keys.openai) return;
+    if (!project.audioBlob || project.transcript) return;
     triedTranscribe.current = true;
     (async () => {
       setTranscribing(true);
       setError(null);
       try {
         const text = await transcribeAudio({
-          apiKey: keys.openai,
           audio: project.audioBlob!,
           filename: project.audioName ?? "audio.webm",
         });
@@ -51,7 +50,7 @@ export default function ScriptStep({
         setTranscribing(false);
       }
     })();
-  }, [project.audioBlob, project.transcript, keys.openai]);
+  }, [project.audioBlob, project.transcript]);
 
   const revert = () => {
     if (preEnhance === null) return;
@@ -74,8 +73,6 @@ export default function ScriptStep({
       setBusy(false);
     }
   };
-
-  const needsOpenAiForTranscribe = project.audioBlob && !project.transcript && !keys.openai;
 
   return (
     <section className="card">
@@ -107,10 +104,10 @@ export default function ScriptStep({
         </div>
       )}
 
-      {needsOpenAiForTranscribe && (
+      {project.audioBlob && !project.transcript && !transcribing && (
         <div className="banner warn">
           <span>🎙️</span>
-          <span>Add your OpenAI key to <code>.env.local</code> to auto-transcribe, or just write/paste your script below.</span>
+          <span>Add your OpenAI key to <code>.env.local</code> to enable audio transcription, or just write/paste your script below.</span>
         </div>
       )}
 
