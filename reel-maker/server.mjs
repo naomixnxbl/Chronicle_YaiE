@@ -23,6 +23,24 @@ const BASE = `http://localhost:${PORT}`;
 const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o"; // vision + structured outputs
 
+// Blotato — schedules posts to Instagram / LinkedIn / Facebook. Needs the user
+// to have connected those accounts in the Blotato dashboard first; we look them
+// up via /v2/users/me/accounts at request time.
+const BLOTATO_KEY = process.env.BLOTATO_API_KEY || null;
+const BLOTATO_BASE = "https://backend.blotato.com/v2";
+async function blotato(method, path, body) {
+  if (!BLOTATO_KEY) throw new Error("Blotato key missing (BLOTATO_API_KEY in .env).");
+  const r = await fetch(`${BLOTATO_BASE}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", "blotato-api-key": BLOTATO_KEY },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await r.text();
+  let json; try { json = text ? JSON.parse(text) : {}; } catch { json = { raw: text }; }
+  if (!r.ok) throw new Error(`Blotato ${method} ${path} → ${r.status} ${JSON.stringify(json).slice(0, 300)}`);
+  return json;
+}
+
 const clamp = (v, lo, hi, dflt) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return dflt;
@@ -108,6 +126,62 @@ app.get("/api/music", (req, res) => {
     .readdirSync(MUSIC_DIR)
     .filter((f) => /\.(mp3|m4a|aac|wav|ogg)$/i.test(f));
   res.json(files);
+});
+
+// ---- Jamendo: free royalty-free music search + one-click add to the library ----
+const JAMENDO_CLIENT_ID = process.env.JAMENDO_CLIENT_ID || null;
+
+// Search Jamendo. Returns a simplified list with stream + download URLs.
+// Query: ?q=upbeat lofi  &speed=high|medium|low  &limit=10
+app.get("/api/music/search", async (req, res) => {
+  try {
+    if (!JAMENDO_CLIENT_ID) return res.status(400).json({ error: "Jamendo is off. Add JAMENDO_CLIENT_ID to reel-maker/.env (free at https://developer.jamendo.com)." });
+    const q = (req.query.q || "").toString().trim();
+    const speed = (req.query.speed || "").toString();
+    const limit = Math.max(1, Math.min(30, Number(req.query.limit) || 12));
+    const params = new URLSearchParams({ client_id: JAMENDO_CLIENT_ID, format: "json", limit: String(limit), order: "popularity_total", audioformat: "mp32" });
+    if (q) params.set("fuzzytags", q.split(/\s+/).filter(Boolean).join("+"));
+    if (["verylow", "low", "medium", "high", "veryhigh"].includes(speed)) params.set("speed", speed);
+    const url = `https://api.jamendo.com/v3.0/tracks/?${params}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`Jamendo ${r.status}`);
+    const j = await r.json();
+    const tracks = (j.results || []).filter((t) => t.audiodownload && t.audiodownload_allowed).map((t) => ({
+      id: t.id,
+      name: t.name,
+      artist: t.artist_name,
+      duration: t.duration,
+      stream: t.audio,
+      download: t.audiodownload,
+      image: t.image || t.album_image,
+      tags: ((t.musicinfo && t.musicinfo.tags && [...(t.musicinfo.tags.genres || []), ...(t.musicinfo.tags.vartags || [])]) || []).slice(0, 6),
+    }));
+    res.json({ tracks });
+  } catch (err) {
+    console.error("Music search failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// Download a Jamendo track into the local music library so it shows in the dropdown.
+// Body: { id, name, artist, download }
+app.post("/api/music/add", async (req, res) => {
+  try {
+    const { id, name, artist, download } = req.body || {};
+    if (!download) return res.status(400).json({ error: "Missing track download URL." });
+    const safe = `${(name || "track").toString()}-${(artist || "").toString()}`
+      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || `jamendo-${id}`;
+    const filename = `${safe}.mp3`;
+    const dest = path.join(MUSIC_DIR, filename);
+    if (fs.existsSync(dest)) return res.json({ filename, alreadyExisted: true });
+    const r = await fetch(download);
+    if (!r.ok) throw new Error(`Download failed (${r.status})`);
+    fs.writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
+    res.json({ filename });
+  } catch (err) {
+    console.error("Music add failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
 });
 
 // ---- narrative: arrange photos into a story + write captions (OpenAI vision) ----
@@ -300,6 +374,180 @@ app.post("/refine", async (req, res) => {
     res.json(JSON.parse(msg.content));
   } catch (err) {
     console.error("Refine failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// ---- Posting to socials via Blotato (Instagram / LinkedIn / Facebook) ----
+
+// List the user's connected social accounts (filtered to IG/LinkedIn/Facebook).
+// For Facebook and LinkedIn, also fetches subaccounts (pages) so the UI can pick which page to post to.
+app.get("/post/accounts", async (req, res) => {
+  try {
+    if (!BLOTATO_KEY) return res.status(400).json({ error: "Blotato is off. Add BLOTATO_API_KEY to reel-maker/.env." });
+    const data = await blotato("GET", "/users/me/accounts");
+    const wanted = new Set(["instagram", "linkedin", "facebook"]);
+    // Pin a specific account per platform via env vars (e.g. BLOTATO_LINKEDIN_ACCOUNT_ID).
+    const PREFERRED = {
+      linkedin: process.env.BLOTATO_LINKEDIN_ACCOUNT_ID || null,
+      instagram: process.env.BLOTATO_INSTAGRAM_ACCOUNT_ID || null,
+      facebook: process.env.BLOTATO_FACEBOOK_ACCOUNT_ID || null,
+    };
+    const accounts = (data.items || [])
+      .filter((a) => wanted.has(a.platform))
+      .filter((a) => !PREFERRED[a.platform] || String(a.id) === String(PREFERRED[a.platform]));
+    // For FB/LinkedIn, fetch pages (subaccounts) so the post can target a page.
+    for (const a of accounts) {
+      if (a.platform === "facebook" || a.platform === "linkedin") {
+        try { const sub = await blotato("GET", `/users/me/accounts/${a.id}/subaccounts`); a.pages = sub.items || []; }
+        catch { a.pages = []; }
+      }
+    }
+    res.json({ accounts });
+  } catch (err) {
+    console.error("Accounts fetch failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// Draft platform-tailored post captions + hashtags from the reel's meta. Each
+// platform gets its own voice/length/hashtag convention — the user picks one,
+// reviews, and posts. The same MP4 is posted; only the text differs.
+const PLATFORM_DRAFT = {
+  type: "object", additionalProperties: false,
+  properties: { caption: { type: "string" }, hashtags: { type: "array", items: { type: "string" } } },
+  required: ["caption", "hashtags"],
+};
+const DRAFT_SCHEMA = {
+  type: "object", additionalProperties: false,
+  properties: { instagram: PLATFORM_DRAFT, linkedin: PLATFORM_DRAFT, facebook: PLATFORM_DRAFT },
+  required: ["instagram", "linkedin", "facebook"],
+};
+app.post("/post/draft", async (req, res) => {
+  try {
+    if (!openai) return res.status(400).json({ error: "Caption AI needs OPENAI_API_KEY in reel-maker/.env." });
+    const meta = req.body || {};
+    const reelContext = meta.reelContext || "";
+    const slideCaptions = Array.isArray(meta.captions) ? meta.captions : [];
+    const sys =
+      `You write social-media post copy for ${brand.name} — one draft per platform (Instagram, LinkedIn, Facebook).\n\n` +
+      `BRAND & VOICE: ${brand.voice}\n\n` +
+      `Each platform has a distinct voice — match it. Captions MUST be visually structured (multiple lines / paragraphs) so they're scroll-friendly. Use REAL LINE BREAKS (\\n) inside the caption text — don't write one long wall of prose.\n\n` +
+      `INSTAGRAM — vibey, lowercase-leaning, human, ENERGETIC and full of feeling. Use 3–5 emojis strategically to add emotion + visual rhythm (one near the hook, one mid-body, one at the CTA — not clumped). Structure exactly like this (with blank lines between):\n\n` +
+      `<HOOK — one short, scroll-stopping line, often a question or a punchy declaration> [emoji]\n\n<BODY — 1–2 short sentences on what's actually happening, vivid and specific, name names/places/numbers where fitting> [emoji]\n\n<CTA — one warm invitation> [emoji]\n\nHashtags: 10, all lowercase, leading "#". Mix: 2 brand/community + 4 broad-reach + 4 niche/topical. Returned in the hashtags array, not inside the caption.\n\n` +
+      `LINKEDIN — professional, sentence-case, formal-but-warm. STRUCTURED with line breaks between paragraphs. Modern LinkedIn welcomes ONE strategic emoji at the start or in the CTA line (👏 🚀 💡 🤝 ✨ are normal). Structure:\n\n` +
+      `<HOOK — one sentence framing the moment or insight>\n\n<BODY — 2–3 sentences with the substance: what happened, who was there, what it meant>\n\n<CTA — a thoughtful invitation: a question, a "join us" line, an event nudge>\n\nHashtags: 3–5, CamelCase (#WesternSydneyTech, #AICommunity). In the hashtags array.\n\n` +
+      `FACEBOOK — conversational, warm and personal, like talking to a community group. Structured with line breaks. 2–3 strategic emojis for warmth. Structure:\n\n` +
+      `<HOOK — one friendly opener> [emoji]\n\n<BODY — 1–2 sentences, the story in plain warm language>\n\n<CTA — friendly invitation, often a question> [emoji]\n\nHashtags: 3–5, lowercase. In the hashtags array.\n\n` +
+      `RULES FOR ALL:\n` +
+      `- Caption MUST contain literal line breaks (\\n\\n between paragraphs). Never one solid block.\n` +
+      `- No quotation marks around the whole caption. No "link in bio" filler.\n` +
+      `- Reflect the actual reel content, not generic copy. Name the event, the place (Western Sydney / Parramatta), the people if relevant.\n` +
+      `- Emojis must feel intentional, not decorative spam — but DO use them; flat emoji-less captions feel corporate and dead.`;
+    const user =
+      `Reel goal / context: ${reelContext || "(none — infer from the on-screen captions)"}\n` +
+      `Title: ${meta.title || ""}\nSubtitle: ${meta.subtitle || ""}\n` +
+      `On-screen captions (the slide-by-slide story):\n${slideCaptions.map((c, i) => `${i + 1}. ${c}`).join("\n") || "(none)"}`;
+    const r = await openai.chat.completions.create({
+      model: MODEL,
+      max_completion_tokens: 1400,
+      messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+      response_format: { type: "json_schema", json_schema: { name: "post_draft", strict: true, schema: DRAFT_SCHEMA } },
+    });
+    const m = r.choices?.[0]?.message;
+    if (m?.refusal) throw new Error(m.refusal);
+    res.json(JSON.parse(m.content));
+  } catch (err) {
+    console.error("Post draft failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// Tweak a single platform's caption + hashtags with a natural-language instruction.
+// Body: { platform, caption, hashtags, instruction, meta }
+const REFINE_DRAFT_SCHEMA = {
+  type: "object", additionalProperties: false,
+  properties: { caption: { type: "string" }, hashtags: { type: "array", items: { type: "string" } } },
+  required: ["caption", "hashtags"],
+};
+app.post("/post/refine", async (req, res) => {
+  try {
+    if (!openai) return res.status(400).json({ error: "Caption AI needs OPENAI_API_KEY in reel-maker/.env." });
+    const { platform, caption, hashtags, instruction, meta } = req.body || {};
+    if (!platform || !instruction) return res.status(400).json({ error: "Missing platform or instruction." });
+    const platformVoice = ({
+      instagram: "vibey, lowercase, energetic, 3–5 strategic emojis. STRUCTURE: hook (1 line) \\n\\n body (1–2 sentences) \\n\\n CTA, with line breaks between. 10 lowercase hashtags.",
+      linkedin: "professional, sentence-case, formal-but-warm, one strategic emoji (eg ✨ 🚀 👏) at hook or CTA is fine. STRUCTURE: hook \\n\\n body (2–3 sentences) \\n\\n CTA. 3–5 CamelCase hashtags.",
+      facebook: "conversational and warm, 2–3 strategic emojis. STRUCTURE: hook \\n\\n body \\n\\n CTA, with line breaks. 3–5 lowercase hashtags.",
+    })[platform] || "on-brand";
+    const sys =
+      `You revise a SINGLE social media post for ${brand.name} on ${platform}.\n\n` +
+      `BRAND & VOICE: ${brand.voice}\n\n` +
+      `PLATFORM CONVENTIONS: ${platformVoice}\n\n` +
+      `Apply the user's instruction. Keep what they didn't ask to change. Return the FULL revised caption + hashtags — not a diff.\n` +
+      `IMPORTANT: If the instruction doesn't mention hashtags, return the CURRENT hashtags EXACTLY as provided (don't regenerate them). Only the caption changes.`;
+    const ctx = meta ? `Reel context: ${meta.reelContext || ""}\nOn-screen captions: ${(meta.captions || []).join(" | ")}` : "";
+    const user =
+      `${ctx ? ctx + "\n\n" : ""}` +
+      `CURRENT caption:\n${caption || "(empty)"}\n\n` +
+      `CURRENT hashtags: ${(hashtags || []).join(" ") || "(none)"}\n\n` +
+      `User's instruction: ${instruction}`;
+    const r = await openai.chat.completions.create({
+      model: MODEL,
+      max_completion_tokens: 700,
+      messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+      response_format: { type: "json_schema", json_schema: { name: "post_refine", strict: true, schema: REFINE_DRAFT_SCHEMA } },
+    });
+    const m = r.choices?.[0]?.message;
+    if (m?.refusal) throw new Error(m.refusal);
+    res.json(JSON.parse(m.content));
+  } catch (err) {
+    console.error("Post refine failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// Schedule (or post-now) the rendered MP4 to the chosen accounts.
+// body: { jobId, caption, hashtags?[], accounts: [{id, platform, pageId?}], scheduledTime?: ISO8601 }
+app.post("/post", async (req, res) => {
+  try {
+    if (!BLOTATO_KEY) return res.status(400).json({ error: "Blotato is off. Add BLOTATO_API_KEY to reel-maker/.env." });
+    const { jobId, caption, hashtags, accounts, scheduledTime } = req.body || {};
+    if (!jobId) return res.status(400).json({ error: "Missing jobId." });
+    if (!Array.isArray(accounts) || !accounts.length) return res.status(400).json({ error: "Pick at least one account to post to." });
+    const j = jobs.get(jobId);
+    if (!j || j.status !== "done" || !j.file || !fs.existsSync(j.file)) return res.status(400).json({ error: "Render not ready for this job." });
+
+    // 1. Upload the MP4 to Blotato (base64 data URI works for files within the size limit).
+    const buf = fs.readFileSync(j.file);
+    const dataUri = `data:video/mp4;base64,${buf.toString("base64")}`;
+    const uploaded = await blotato("POST", "/media", { url: dataUri });
+    const mediaUrl = uploaded.url;
+    if (!mediaUrl) throw new Error("Blotato upload returned no URL.");
+
+    // 2. Build the post body for each selected account and schedule it.
+    const text = [caption || "", Array.isArray(hashtags) ? hashtags.join(" ") : ""].filter(Boolean).join("\n\n");
+    const results = [];
+    for (const a of accounts) {
+      try {
+        const post = {
+          accountId: a.id,
+          content: { text, mediaUrls: [mediaUrl], platform: a.platform },
+          target: { targetType: a.platform },
+        };
+        if (a.platform === "instagram") post.target.mediaType = "reel";
+        if (a.platform === "facebook") { post.target.mediaType = "reel"; if (a.pageId) post.target.pageId = a.pageId; }
+        if (a.platform === "linkedin" && a.pageId) post.target.pageId = a.pageId;
+        const body = scheduledTime ? { post, scheduledTime } : { post };
+        const r = await blotato("POST", "/posts", body);
+        results.push({ platform: a.platform, ok: true, id: r.id || r.postId || null, when: scheduledTime || "now" });
+      } catch (e) {
+        results.push({ platform: a.platform, ok: false, error: String(e.message || e) });
+      }
+    }
+    res.json({ results, mediaUrl });
+  } catch (err) {
+    console.error("Post failed:", err);
     res.status(500).json({ error: String(err.message || err) });
   }
 });

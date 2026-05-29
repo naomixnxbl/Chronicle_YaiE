@@ -3,7 +3,7 @@
   "name": "Western Sydney Tech Innovators",
   "wordmark": "WSTI",
   "logoImage": "brand/wsti-logo.png",
-  "useBuiltinMark": true,
+  "useBuiltinMark": false,
   "accent": "#3BCB97",
   "bg": "#0B121F",
   "defaultCopy": {
@@ -15,6 +15,6 @@
     "website": "westernsydneytechinnovators.org",
     "handle": "@westernsydneytechinnovators"
   },
-  "tagline": "Drop your event photos in, add a few notes, and let Claude arrange them into a story. Pick a format, hit render — the same polished WSTI look, every time.",
-  "voice": "WSTI (Western Sydney Tech Innovators) is a 3,400+ member community in Western Sydney focused on hands-on AI and emerging tech. The brand voice is warm, human, energetic and inclusive — proud of its people, never corporate or stiff. Celebrate the people, the energy, the curiosity, and Western Sydney pride."
+  "tagline": "Drop your event photos in, add a few notes, and let the AI arrange them into a story. Pick a format, hit render — the same polished WSTI look, every time.",
+  "voice": "WSTI (Western Sydney Tech Innovators) is Western Sydney's most vibrant community for AI, emerging tech and innovation — 3,400+ members strong, grassroots, volunteer-run, based around Parramatta. Founder Lailei Huang's ethos: \"sometimes you've got to create what you want to be part of.\" Flagship: the AI Shed — hands-on learning, skills training, and access to resources to prepare Western Sydney for the jobs and industries of the future. Cadence: weekly AI Lab Sessions, casual community hangouts, bootcamps, workshops, mentorship, the Young AI Engineers Club. Themes: equitable AI adoption, no-one-left-behind, community-led innovation, accessibility and inclusion, local pride. \n\nVOICE: warm, human, energetic and inclusive — proud of its people, never corporate or stiff. Celebrates faces, hands-on building, and Western Sydney pride. Likes phrases like \"hands-on\", \"come and learn\", \"build with us\", \"accessible and inclusive\", \"the best is still to come\". Avoid: jargon, hype words like \"unlock\" / \"revolutionise\", title-case ad headlines, generic stock copy.\n\nGOOD EXAMPLES (the kind of tone we want): \"From AI lab sessions with hands-on learning to casual hangouts discussing what's happening in the tech scene — WSTI is creating an accessible and inclusive environment where anyone can get involved.\" / \"How can we harness the power of AI to empower the community while ensuring no one is left behind?\""
 }

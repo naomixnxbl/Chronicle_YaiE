@@ -100,7 +100,16 @@ const Lockup: React.FC<{
       >
         {wordmark}
       </span>
-      {useBuiltinMark ? <WstiMark size={fontSize * 0.86} color={color} /> : null}
+      {useBuiltinMark ? (
+        logoImage ? (
+          <Img
+            src={staticFile(logoImage)}
+            style={{ height: fontSize * 1.0, width: "auto", display: "block", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.45))" }}
+          />
+        ) : (
+          <WstiMark size={fontSize * 0.86} color={color} />
+        )
+      ) : null}
     </div>
   );
 };
@@ -462,22 +471,6 @@ const AnimatedCaption: React.FC<{
   );
 };
 
-// Instagram story-style segmented progress bar across the top.
-const StoryProgress: React.FC<{ index: number; count: number; durationInFrames: number }> = ({ index, count, durationInFrames }) => {
-  const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
-  const pad = Math.min(width, height) * 0.045;
-  const within = interpolate(frame, [0, durationInFrames], [0, 1], { extrapolateRight: "clamp" });
-  return (
-    <div style={{ position: "absolute", top: pad * 0.5, left: pad, right: pad, display: "flex", gap: Math.max(4, width * 0.006), pointerEvents: "none", zIndex: 5 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} style={{ flex: 1, height: Math.max(3, width * 0.0042), borderRadius: 99, background: "rgba(255,255,255,0.28)", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: i < index ? "100%" : i === index ? `${within * 100}%` : "0%", background: "#fff" }} />
-        </div>
-      ))}
-    </div>
-  );
-};
 
 // Small twinkling accent sticker.
 const Sparkle: React.FC<{ accent: string; size: number; style?: React.CSSProperties }> = ({ accent, size, style }) => {
@@ -584,7 +577,6 @@ const PhotoSlide: React.FC<{
       {bottomCaption || energy === 0 ? <Scrim /> : null}
       {energy > 0 ? (
         <>
-          <StoryProgress index={index} count={slideCount} durationInFrames={durationInFrames} />
           <StickerSet index={index} accent={accent} base={base} />
         </>
       ) : null}
@@ -697,7 +689,6 @@ const DuoSlide: React.FC<{
       <AbsoluteFill style={{ background: energy > 0 ? accent : "#eafff6", opacity: flash, mixBlendMode: "screen", pointerEvents: "none" }} />
       {energy > 0 ? (
         <>
-          <StoryProgress index={index} count={slideCount} durationInFrames={durationInFrames} />
           <Sparkle accent={accent} size={base * 0.045} style={{ top: base * 0.16, right: base * 0.08 }} />
         </>
       ) : null}
@@ -741,6 +732,8 @@ const IntroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
   const { fps, width, height } = useVideoConfig();
   const s = (d: number) => spring({ frame: frame - d, fps, config: { damping: 200 } });
   const isWide = width > height;
+  // Size fonts/vertical spacing by the SHORTER side so landscape (16:9) doesn't blow up.
+  const base = Math.min(width, height);
   return (
     <AbsoluteFill style={{ backgroundColor: props.bg }}>
       <AbsoluteFill style={{ background: `radial-gradient(120% 80% at 50% 8%, ${props.accent}26 0%, ${props.bg} 58%)` }} />
@@ -752,8 +745,8 @@ const IntroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
           textAlign: isWide ? "center" : "left",
         }}
       >
-        <div style={{ opacity: s(0), transform: `translateY(${interpolate(s(0), [0, 1], [24, 0])}px)`, marginBottom: width * 0.055 }}>
-          <Lockup fontSize={Math.round(width * 0.088)} color={props.accent} wordmark={props.wordmark} logoImage={props.logoImage} useBuiltinMark={props.useBuiltinMark} />
+        <div style={{ opacity: s(0), transform: `translateY(${interpolate(s(0), [0, 1], [24, 0])}px)`, marginBottom: base * 0.055 }}>
+          <Lockup fontSize={Math.round(base * 0.088)} color={props.accent} wordmark={props.wordmark} logoImage={props.logoImage} useBuiltinMark={props.useBuiltinMark} />
         </div>
         <WordReveal
           text={props.title}
@@ -761,7 +754,7 @@ const IntroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
           style={{
             fontFamily: DISPLAY,
             color: "#fff",
-            fontSize: Math.round(width * 0.094),
+            fontSize: Math.round(base * 0.094),
             lineHeight: 0.98,
             letterSpacing: "-1px",
             textTransform: "uppercase",
@@ -776,8 +769,8 @@ const IntroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
             fontFamily: SANS,
             fontWeight: 600,
             color: "rgba(255,255,255,0.82)",
-            fontSize: Math.round(width * 0.034),
-            marginTop: width * 0.035,
+            fontSize: Math.round(base * 0.034),
+            marginTop: base * 0.035,
           }}
         >
           {props.subtitle}
@@ -806,26 +799,28 @@ const OutroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
   const { fps, width, height } = useVideoConfig();
   const s = (d: number) => spring({ frame: frame - d, fps, config: { damping: 200 } });
   const isWide = width > height;
+  // Size fonts/vertical spacing by the SHORTER side so landscape (16:9) text isn't oversized.
+  const base = Math.min(width, height);
 
   // cursor approaches the pill, then clicks
   const CLICK = 58;
   const approach = spring({ frame: frame - 40, fps, config: { damping: 16, stiffness: 120, mass: 0.8 } });
-  const ax = (1 - approach) * width * 0.12;
-  const ay = (1 - approach) * width * 0.1;
-  const dip = interpolate(frame, [CLICK - 1, CLICK + 1, CLICK + 4], [0, width * 0.012, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const ax = (1 - approach) * base * 0.12;
+  const ay = (1 - approach) * base * 0.1;
+  const dip = interpolate(frame, [CLICK - 1, CLICK + 1, CLICK + 4], [0, base * 0.012, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const cursorOpacity = interpolate(frame, [34, 40], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const press = interpolate(frame, [CLICK - 2, CLICK, CLICK + 9], [1, 0.93, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const glow = interpolate(frame, [CLICK, CLICK + 18], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const rippleScale = interpolate(frame, [CLICK, CLICK + 20], [0.2, 5.5], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const rippleOpacity = interpolate(frame, [CLICK, CLICK + 20], [0.85, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const cursorSize = width * 0.07;
+  const cursorSize = base * 0.07;
 
   return (
     <AbsoluteFill style={{ backgroundColor: props.bg }}>
       <AbsoluteFill style={{ background: `radial-gradient(120% 90% at 50% 100%, ${props.accent}33 0%, ${props.bg} 55%)` }} />
       <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", textAlign: "center", padding: `0 ${width * 0.08}px` }}>
         <div style={{ opacity: s(0), transform: `scale(${interpolate(s(0), [0, 1], [0.82, 1])})` }}>
-          <Lockup fontSize={Math.round(width * 0.16)} color={props.accent} wordmark={props.wordmark} logoImage={props.logoImage} useBuiltinMark={props.useBuiltinMark} />
+          <Lockup fontSize={Math.round(base * 0.16)} color={props.accent} wordmark={props.wordmark} logoImage={props.logoImage} useBuiltinMark={props.useBuiltinMark} />
         </div>
         <div
           style={{
@@ -833,10 +828,10 @@ const OutroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
             transform: `translateY(${interpolate(s(10), [0, 1], [28, 0])}px)`,
             fontFamily: DISPLAY,
             color: "#fff",
-            fontSize: Math.round(width * 0.072),
+            fontSize: Math.round(base * 0.072),
             textTransform: "uppercase",
             lineHeight: 1.02,
-            marginTop: width * 0.045,
+            marginTop: base * 0.045,
             maxWidth: isWide ? "72%" : "100%",
           }}
         >
@@ -848,8 +843,8 @@ const OutroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
             fontFamily: SANS,
             fontWeight: 600,
             color: "rgba(255,255,255,0.8)",
-            fontSize: Math.round(width * 0.032),
-            marginTop: width * 0.022,
+            fontSize: Math.round(base * 0.032),
+            marginTop: base * 0.022,
             maxWidth: "85%",
           }}
         >
@@ -857,18 +852,18 @@ const OutroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
         </div>
 
         {/* website pill + clicking cursor */}
-        <div style={{ position: "relative", display: "inline-block", marginTop: width * 0.06, opacity: s(24) }}>
+        <div style={{ position: "relative", display: "inline-block", marginTop: base * 0.06, opacity: s(24) }}>
           <div
             style={{
               fontFamily: SANS,
               fontWeight: 800,
               color: "#0B121F",
               background: props.accent,
-              fontSize: Math.round(width * 0.034),
-              padding: `${width * 0.021}px ${width * 0.05}px`,
+              fontSize: Math.round(base * 0.034),
+              padding: `${base * 0.021}px ${base * 0.05}px`,
               borderRadius: 999,
               transform: `scale(${press})`,
-              boxShadow: `0 0 ${width * 0.06 * glow}px ${props.accent}, 0 ${width * 0.01}px ${width * 0.03}px rgba(0,0,0,0.4)`,
+              boxShadow: `0 0 ${base * 0.06 * glow}px ${props.accent}, 0 ${base * 0.01}px ${base * 0.03}px rgba(0,0,0,0.4)`,
             }}
           >
             {props.website}
@@ -879,12 +874,12 @@ const OutroSlide: React.FC<{ props: ReelProps }> = ({ props }) => {
               position: "absolute",
               left: "62%",
               top: "52%",
-              width: width * 0.05,
-              height: width * 0.05,
-              marginLeft: -(width * 0.025),
-              marginTop: -(width * 0.025),
+              width: base * 0.05,
+              height: base * 0.05,
+              marginLeft: -(base * 0.025),
+              marginTop: -(base * 0.025),
               borderRadius: "50%",
-              border: `${Math.max(2, width * 0.004)}px solid ${props.accent}`,
+              border: `${Math.max(2, base * 0.004)}px solid ${props.accent}`,
               transform: `scale(${rippleScale})`,
               opacity: rippleOpacity,
               pointerEvents: "none",

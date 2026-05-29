@@ -182,6 +182,106 @@
       .refine label { font-size: 14px; color: var(--text); font-weight: 700; margin-bottom: 9px; }
       .refine .btn.ghost { margin-top: 12px; }
 
+      /* --- post-to-socials --- */
+      .postblock { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+      .postblock > .btn { margin-top: 0; }
+      .postpanel { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
+      .postpanel label { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 6px; display: block; }
+      .platrow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; margin-top: 8px; font-size: 13px; cursor: pointer; }
+      .platrow input { margin: 0; accent-color: var(--accent); }
+      .platrow b { text-transform: capitalize; color: var(--accent); }
+      .postwhen { display: flex; gap: 10px; align-items: center; }
+      .postwhen select, .postwhen input { flex: 1; }
+      .postresult { font-size: 13.5px; line-height: 1.6; color: var(--text); }
+      .postresult .ok::before { content: "✓ "; color: var(--accent); }
+      .postresult .bad::before { content: "✕ "; color: var(--danger); }
+
+      /* platform tabs (Instagram · LinkedIn · Facebook) */
+      .ptabs { display: flex; gap: 8px; margin-bottom: 14px; }
+      .ptab { flex: 1; padding: 10px 12px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: 0.16s; }
+      .ptab:hover { color: var(--text); }
+      .ptab.active { background: rgba(59,203,151,0.12); border-color: var(--accent); color: var(--text); }
+
+      /* platform preview "chrome" — light cards on the dark page, so they actually feel like Insta/LinkedIn/FB */
+      .preview { background: #fff; color: #111; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; max-width: 380px; margin: 0 auto; }
+      .preview .vidwrap { background: #000; display: block; overflow: hidden; position: relative; aspect-ratio: 9 / 16; }
+      .preview .vidwrap video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; margin: 0; border-radius: 0; box-shadow: none; }
+
+      /* INSTAGRAM */
+      .preview.ig .hdr { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+      .preview.ig .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(45deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5); padding: 2px; display: grid; place-items: center; }
+      .preview.ig .avatar > div { width: 100%; height: 100%; border-radius: 50%; background: #fff; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: #111; }
+      .preview.ig .uname { font-weight: 700; font-size: 14px; color: #111; }
+      .preview.ig .more { margin-left: auto; font-size: 18px; color: #444; }
+      .preview.ig .actions { display: flex; gap: 14px; padding: 10px 12px; font-size: 22px; }
+      .preview.ig .actions .save { margin-left: auto; }
+      .preview.ig .body { padding: 0 12px 14px; font-size: 13.5px; line-height: 1.4; color: #111; white-space: pre-wrap; word-break: break-word; }
+      .preview.ig .body .un { font-weight: 700; margin-right: 6px; }
+      .preview.ig .body .tags { color: #00376b; }
+
+      /* LINKEDIN */
+      .preview.li .hdr { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+      .preview.li .avatar { width: 44px; height: 44px; border-radius: 50%; background: #0a66c2; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 16px; flex: none; }
+      .preview.li .who .name { font-weight: 700; font-size: 14px; color: #0a0a0a; }
+      .preview.li .who .meta { font-size: 12px; color: #5a5a5a; }
+      .preview.li .body { padding: 4px 14px 12px; font-size: 14px; line-height: 1.45; color: #0a0a0a; white-space: pre-wrap; word-break: break-word; }
+      .preview.li .body .tags { color: #0a66c2; font-weight: 600; }
+      .preview.li .actions { display: flex; justify-content: space-around; padding: 8px 4px; border-top: 1px solid #ececec; color: #4a4a4a; font-size: 13px; font-weight: 600; }
+
+      /* === STEP 4 — POST PAGE === */
+      .postpagecard { padding: 28px; }
+      .postpagecard h2 { margin-bottom: 22px; }
+
+      /* Platform picker cards */
+      .platgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+      .platcard {
+        background: var(--panel2); border: 1.5px solid var(--line); border-radius: 14px;
+        padding: 18px 14px; cursor: pointer; transition: 0.18s; font-family: inherit;
+        display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+      }
+      .platcard:hover { border-color: #4a5d80; transform: translateY(-1px); }
+      .platcard.active { border-color: var(--accent); background: rgba(59,203,151,0.08); box-shadow: 0 8px 22px -10px rgba(59,203,151,0.5); }
+      .platlogo {
+        width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center;
+        font-weight: 800; color: #fff; font-size: 17px; letter-spacing: -0.5px;
+      }
+      .platlogo.igbg { background: linear-gradient(135deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5); }
+      .platlogo.libg { background: #0a66c2; font-family: Georgia, serif; font-style: italic; }
+      .platlogo.fbbg { background: #1877f2; font-family: Helvetica, sans-serif; font-size: 24px; }
+      .platname { font-weight: 700; color: var(--text); font-size: 15px; }
+      .platsub { color: var(--muted); font-size: 11.5px; line-height: 1.3; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .platcard.active .platsub { color: var(--text); }
+
+      /* Two-column layout: preview on top (mobile-first), controls below — stacks naturally */
+      .postlayout { display: flex; flex-direction: column; gap: 22px; }
+      @media (min-width: 820px) {
+        .postlayout { flex-direction: row; align-items: flex-start; }
+        .postpreviewcol { flex: 0 0 380px; position: sticky; top: 24px; }
+        .postcontrolscol { flex: 1; min-width: 0; }
+      }
+      .postlabel { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+      .postsection { margin-bottom: 18px; }
+      .postsection > label { display: block; font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 7px; }
+      .postsection textarea { width: 100%; }
+      .postbig {
+        margin-top: 8px; padding: 18px 22px !important; font-size: 17px !important;
+        border-radius: 14px; box-shadow: 0 18px 34px -14px rgba(59,203,151,0.65) !important;
+      }
+      .platgrid + .postlayout { padding-top: 6px; }
+      @media (max-width: 560px) {
+        .platgrid { grid-template-columns: 1fr; }
+        .postpagecard { padding: 22px; }
+      }
+
+      /* FACEBOOK */
+      .preview.fb .hdr { display: flex; align-items: center; gap: 10px; padding: 12px 14px 6px; }
+      .preview.fb .avatar { width: 40px; height: 40px; border-radius: 50%; background: #1877f2; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 16px; flex: none; }
+      .preview.fb .who .name { font-weight: 700; font-size: 14px; color: #050505; }
+      .preview.fb .who .meta { font-size: 12px; color: #65676b; }
+      .preview.fb .body { padding: 6px 14px 12px; font-size: 14px; line-height: 1.45; color: #050505; white-space: pre-wrap; word-break: break-word; }
+      .preview.fb .body .tags { color: #1877f2; }
+      .preview.fb .actions { display: flex; justify-content: space-around; padding: 8px 4px; border-top: 1px solid #e4e6eb; color: #65676b; font-size: 13px; font-weight: 600; }
+
       /* --- wizard steps --- */
       .steps { display: flex; align-items: center; gap: 8px; margin: 4px 0 26px; flex-wrap: wrap; }
       .step-pill {
@@ -248,6 +348,8 @@
         <button class="step-pill" type="button" data-step="2"><b>2</b> Text &amp; format</button>
         <span class="step-line"></span>
         <button class="step-pill" type="button" data-step="3"><b>3</b> Your reel</button>
+        <span class="step-line"></span>
+        <button class="step-pill" type="button" data-step="4"><b>4</b> Post</button>
       </nav>
 
       <!-- ============ STEP 1 ============ -->
@@ -333,9 +435,24 @@
           <div class="musicrow">
             <select id="music"><option value="">No music</option></select>
             <button type="button" class="iconbtn" id="musicPlay" title="Preview">▶</button>
+            <button type="button" class="navbtn small" id="musicFindBtn" title="Search free music from Jamendo">🎵 Find trendy</button>
           </div>
           <audio id="musicPreview"></audio>
           <div class="hint">Music loops automatically to fill the whole video. Add your own <code>.mp3</code> to <code>reel-maker/public/music/</code> for more options.</div>
+
+          <div id="musicFinder" hidden style="margin-top:14px; padding:14px; background: var(--panel2); border:1px solid var(--line); border-radius:12px;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="text" id="musicQ" placeholder="vibe / genre — e.g. upbeat lofi, chill, energetic electronic" style="flex:1;" />
+              <select id="musicSpeed" style="width:130px;">
+                <option value="">any tempo</option>
+                <option value="low">slow</option>
+                <option value="medium">medium</option>
+                <option value="high">fast</option>
+              </select>
+              <button class="btn ghost" id="musicSearchBtn" type="button" style="margin:0; padding:11px 16px; width:auto;">Search</button>
+            </div>
+            <div id="musicResults" style="margin-top:12px;"></div>
+          </div>
         </div>
         <div class="hint" id="lengthHint"></div>
       </div>
@@ -354,6 +471,77 @@
           <button class="btn" id="createNew" type="button" style="width:auto">+ Create new reel</button>
         </div>
       </section>
+
+      <!-- ============ STEP 4 — POST ============ -->
+      <section class="page" id="page4" hidden>
+        <div class="card postpagecard">
+          <h2><span class="step">4</span> Post to socials</h2>
+
+          <!-- big platform picker -->
+          <div class="platgrid">
+            <button class="platcard ig active" type="button" data-platform="instagram">
+              <div class="platlogo igbg">IG</div>
+              <div class="platname">Instagram</div>
+              <div class="platsub" id="platsubInstagram">— loading account —</div>
+            </button>
+            <button class="platcard li" type="button" data-platform="linkedin">
+              <div class="platlogo libg">in</div>
+              <div class="platname">LinkedIn</div>
+              <div class="platsub" id="platsubLinkedin">— loading account —</div>
+            </button>
+            <button class="platcard fb" type="button" data-platform="facebook">
+              <div class="platlogo fbbg">f</div>
+              <div class="platname">Facebook</div>
+              <div class="platsub" id="platsubFacebook">— loading account —</div>
+            </button>
+          </div>
+
+          <!-- preview + controls (single column on narrow, two-column-ish on wider via flex) -->
+          <div class="postlayout">
+            <div class="postpreviewcol">
+              <div class="postlabel">Live preview</div>
+              <div id="postPreview"><span class="hint">Loading preview…</span></div>
+              <div class="hint" style="margin-top:10px; text-align:center;">↑ How this post will look on <span id="activePlatformName">Instagram</span></div>
+            </div>
+            <div class="postcontrolscol">
+              <div class="postsection">
+                <label>Caption</label>
+                <textarea id="postCaption" rows="6" placeholder="Loading…"></textarea>
+              </div>
+              <div class="postsection">
+                <label>Hashtags</label>
+                <textarea id="postHashtags" rows="2" placeholder="#yourtags"></textarea>
+              </div>
+              <div class="postsection captionRefine">
+                <label>Tweak this caption ✨ <span class="hint" style="font-weight:400">(plain English — only affects the active platform)</span></label>
+                <textarea id="postRefineBox" rows="2" placeholder="e.g. shorter · more formal · remove emojis · add a question"></textarea>
+                <button class="btn ghost" id="postRefineBtn" type="button">Apply changes</button>
+                <div class="hint" id="postRefineNote"></div>
+              </div>
+              <div class="postsection">
+                <label>When to post</label>
+                <div class="postwhen">
+                  <select id="postSchedule">
+                    <option value="now">Post now</option>
+                    <option value="schedule">Schedule for later…</option>
+                  </select>
+                  <input type="datetime-local" id="postWhen" hidden />
+                </div>
+              </div>
+              <button class="btn postbig" id="postSubmit" type="button">✓ Approve &amp; post to Instagram</button>
+              <div class="postresult" id="postResult"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pagenav">
+          <button class="navbtn" id="backTo3" type="button">← Back to your reel</button>
+          <button class="btn ghost" id="createNew2" type="button" style="width:auto">+ Create new reel</button>
+        </div>
+
+        <!-- Hidden helpers used by the existing post-account label code (kept to avoid touching that logic) -->
+        <div id="postAccountLabel" hidden></div>
+      </section>
     </div>
 
     <script>
@@ -363,7 +551,7 @@
       const flatPhotos = () => slides.flatMap((s) => s.photos);
 
       // --- wizard navigation (purely show/hide; all logic/IDs unchanged) ---
-      const PAGES = ["page1", "page2", "page3"];
+      const PAGES = ["page1", "page2", "page3", "page4"];
       let currentPage = "page1";
       let currentJobId = null;
       function goTo(id) {
@@ -376,6 +564,7 @@
         });
         window.scrollTo({ top: 0, behavior: "smooth" });
         scheduleSave();
+        if (id === "page4" && typeof enterPostPage === "function") enterPostPage();
       }
       document.querySelectorAll(".step-pill").forEach((el) => {
         el.onclick = () => goTo("page" + el.dataset.step);
@@ -383,6 +572,15 @@
       $("skipStory").onclick = () => goTo("page2");
       $("backTo1").onclick = () => goTo("page1");
       $("backTo2").onclick = () => goTo("page2");
+      $("backTo3").onclick = () => goTo("page3");
+      // create new on step 4 mirrors createNew on step 3
+      const createNewHandler = async () => {
+        if (!confirm("Start a new reel? This clears the current photos, captions and settings.")) return;
+        try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
+        await dbClear();
+        location.reload();
+      };
+      $("createNew2").onclick = createNewHandler;
       // start a brand-new reel: wipe the current draft + photos and reload fresh
       $("createNew").onclick = async () => {
         if (!confirm("Start a new reel? This clears the current photos, captions and settings.")) return;
@@ -560,7 +758,9 @@
       // --- brand: fill every default from /api/brand so the same form works for
       // any business (just swap brand.config.json + the logo). ---
       const hasDraft = !!sessionStorage.getItem(DRAFT_KEY);
+      let BRAND_INFO = { name: "Brand", wordmark: "B", accent: "#3BCB97" };
       fetch("/api/brand").then((r) => r.json()).then((b) => {
+        BRAND_INFO = { name: b.name || "Brand", wordmark: b.wordmark || "B", accent: b.accent || "#3BCB97", handle: (b.defaultCopy && b.defaultCopy.handle) || "" };
         document.title = (b.name ? b.name + " — " : "") + "Reel Maker";
         if (b.logoImage) $("brandLogo").src = "/" + b.logoImage.replace(/^\//, "");
         else $("brandLogo").style.display = "none";
@@ -592,32 +792,110 @@
       const prettyMusic = (f) =>
         MUSIC_LABELS[f] || f.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-      fetch("/api/music").then((r) => r.json()).then((files) => {
-        const sel = $("music");
-        files.forEach((f) => {
-          const o = document.createElement("option");
-          o.value = f; o.textContent = prettyMusic(f); sel.appendChild(o);
+      function loadMusicList(selectNew) {
+        return fetch("/api/music").then((r) => r.json()).then((files) => {
+          const sel = $("music");
+          const prev = sel.value;
+          // keep the "No music" option, replace the rest
+          sel.innerHTML = '<option value="">No music</option>';
+          files.forEach((f) => {
+            const o = document.createElement("option");
+            o.value = f; o.textContent = prettyMusic(f); sel.appendChild(o);
+          });
+          if (selectNew && files.includes(selectNew)) sel.value = selectNew;
+          else if (prev && files.includes(prev)) sel.value = prev;
+          else {
+            let saved = null;
+            try { saved = (JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null") || {}).fields?.music; } catch {}
+            if (saved != null && (saved === "" || files.includes(saved))) sel.value = saved;
+            else if (files.includes("wsti-drive.wav")) sel.value = "wsti-drive.wav";
+            else if (files.length) sel.value = files[0];
+          }
         });
-        // honour a saved draft's track; otherwise default to drive / first track
-        let saved = null;
-        try { saved = (JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null") || {}).fields?.music; } catch {}
-        if (saved != null && (saved === "" || files.includes(saved))) sel.value = saved;
-        else if (files.includes("wsti-drive.wav")) sel.value = "wsti-drive.wav";
-        else if (files.length) sel.value = files[0];
-      });
+      }
+      loadMusicList();
+
+      // --- Jamendo music finder (free royalty-free music search) ---
+      // Single shared audio object — survives re-searches so previews can be stopped.
+      let finderAudio = null;
+      function stopFinder() {
+        if (finderAudio && !finderAudio.paused) { finderAudio.pause(); finderAudio.currentTime = 0; }
+        document.querySelectorAll("#musicResults button[data-stream]").forEach((b) => (b.textContent = "▶"));
+      }
+      $("musicFindBtn").onclick = () => { $("musicFinder").hidden = !$("musicFinder").hidden; };
+      $("musicSearchBtn").onclick = async () => {
+        stopFinder(); // stop any preview from a previous search before re-rendering results
+        const q = $("musicQ").value.trim();
+        const speed = $("musicSpeed").value;
+        const out = $("musicResults");
+        out.innerHTML = '<span class="hint">searching…</span>';
+        try {
+          const params = new URLSearchParams();
+          if (q) params.set("q", q);
+          if (speed) params.set("speed", speed);
+          const r = await fetch("/api/music/search?" + params.toString());
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Search failed");
+          if (!j.tracks || !j.tracks.length) { out.innerHTML = '<span class="hint">No tracks found.</span>'; return; }
+          out.innerHTML = j.tracks.map((t, i) => {
+            const dur = `${Math.floor(t.duration / 60)}:${String(t.duration % 60).padStart(2, "0")}`;
+            return `<div class="trackrow" data-i="${i}" style="display:flex; align-items:center; gap:10px; padding:8px 10px; background:var(--panel); border:1px solid var(--line); border-radius:9px; margin-top:6px; font-size:13px;">
+              <button class="iconbtn" data-stream="${escapeAttr(t.stream)}" data-i="${i}" type="button" title="Preview">▶</button>
+              <div style="flex:1; min-width:0;"><div style="font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeAttr(t.name)}</div><div style="color:var(--muted); font-size:11.5px;">${escapeAttr(t.artist)} · ${dur}${(t.tags && t.tags.length) ? " · " + escapeAttr(t.tags.slice(0,3).join(", ")) : ""}</div></div>
+              <button class="navbtn small" data-add='${escapeAttr(JSON.stringify({id:t.id,name:t.name,artist:t.artist,download:t.download}))}' type="button">+ Add</button>
+            </div>`;
+          }).join("");
+          // wire preview play — uses the shared finderAudio so any other preview can stop it
+          if (!finderAudio) finderAudio = new Audio();
+          finderAudio.onended = null; // clear previous handler
+          out.querySelectorAll("button[data-stream]").forEach((b) => {
+            b.onclick = () => {
+              const isThisOne = finderAudio.src === b.dataset.stream && !finderAudio.paused;
+              stopFinder();          // pause whatever was playing in the finder
+              stopPreview();         // also stop the dropdown's preview if it was playing
+              if (isThisOne) return; // user clicked the currently-playing one → just stop
+              finderAudio.src = b.dataset.stream;
+              finderAudio.play().catch(() => {});
+              b.textContent = "⏸";
+              finderAudio.onended = () => (b.textContent = "▶");
+            };
+          });
+          // wire add to library
+          out.querySelectorAll("button[data-add]").forEach((b) => {
+            b.onclick = async () => {
+              const payload = JSON.parse(b.dataset.add);
+              b.disabled = true; b.textContent = "Adding…";
+              try {
+                const r2 = await fetch("/api/music/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                const j2 = await r2.json();
+                if (!r2.ok) throw new Error(j2.error || "Add failed");
+                await loadMusicList(j2.filename);
+                b.textContent = "Added ✓";
+              } catch (e) {
+                b.disabled = false; b.textContent = "+ Add";
+                alert(e.message);
+              }
+            };
+          });
+        } catch (e) {
+          out.innerHTML = '<span class="err">' + e.message + "</span>";
+        }
+      };
+      function escapeAttr(s) { return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
       // preview player
       const preview = $("musicPreview");
       const playBtn = $("musicPlay");
-      function stopPreview() { preview.pause(); playBtn.textContent = "▶"; }
+      function stopPreview() { if (!preview.paused) { preview.pause(); } playBtn.textContent = "▶"; }
       $("music").addEventListener("change", stopPreview);
       preview.addEventListener("ended", () => (playBtn.textContent = "▶"));
       playBtn.onclick = () => {
         const track = $("music").value;
         if (!track) { alert("Pick a track first (or it's set to No music)."); return; }
         if (preview.paused) {
+          stopFinder();                 // ensure no other track is still playing in the finder
           preview.src = "/music/" + track;
-          preview.play();
+          preview.play().catch(() => {});
           playBtn.textContent = "⏸";
         } else {
           stopPreview();
@@ -770,10 +1048,198 @@
             ? '<button class="btn ghost" id="undoBtn" type="button">↩ Undo last change (' + refineHistory.length + ")</button>"
             : "") +
           '<div class="hint" id="refineNote"></div>' +
-          "</div>";
+          "</div>" +
+          '<button class="btn postbig" id="postOpenBtn" type="button" style="margin-top:18px;">📣 Post to socials →</button>';
         $("refineBtn").onclick = refine;
         if ($("undoBtn")) $("undoBtn").onclick = undoRefine;
+        $("postOpenBtn").onclick = () => goTo("page4");
         resetBtn();
+      }
+
+      // --- post to socials ----------------------------------------------
+      // Per-platform local state — caption/hashtags edits persist when switching tabs.
+      const pState = { instagram: { caption: "", hashtags: [] }, linkedin: { caption: "", hashtags: [] }, facebook: { caption: "", hashtags: [] } };
+      const pAccount = { instagram: null, linkedin: null, facebook: null };
+      let pActive = "instagram";
+      const PLATFORM_LABEL = { instagram: "Instagram", linkedin: "LinkedIn", facebook: "Facebook" };
+
+      // True once accounts + drafts are loaded for the current jobId (so we don't refetch when re-entering page 4).
+      let pLoadedForJob = null;
+      async function enterPostPage() {
+        // Need a finished render first
+        if (!currentJobId) {
+          $("postPreview").innerHTML = '<div class="err" style="padding:20px;text-align:center">Render a reel first — then come back to post.</div>';
+          $("postSubmit").disabled = true; $("postSubmit").textContent = "✓ Render a reel first";
+          return;
+        }
+        // wire interactions (idempotent — safe to re-run)
+        document.querySelectorAll(".platcard").forEach((el) => { el.onclick = () => switchPlatform(el.dataset.platform); });
+        $("postSchedule").onchange = (e) => { $("postWhen").hidden = e.target.value !== "schedule"; };
+        $("postSubmit").onclick = submitPost;
+        $("postCaption").oninput = (e) => { pState[pActive].caption = e.target.value; renderPreview(); };
+        $("postHashtags").oninput = (e) => { pState[pActive].hashtags = (e.target.value || "").trim().split(/\s+/).filter(Boolean); renderPreview(); };
+        $("postRefineBtn").onclick = refineCaption;
+
+        if (pLoadedForJob === currentJobId) { switchPlatform(pActive); return; }
+        $("postPreview").innerHTML = '<span class="hint">Loading preview + AI caption…</span>';
+        try {
+          const [accountsRes, draftRes] = await Promise.all([
+            fetch("/post/accounts").then((r) => r.json()),
+            fetch("/post/draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildMeta()) }).then((r) => r.json()),
+          ]);
+          if (accountsRes.error) throw new Error(accountsRes.error);
+          if (draftRes.error) throw new Error(draftRes.error);
+          for (const p of ["instagram", "linkedin", "facebook"]) {
+            const d = draftRes[p] || { caption: "", hashtags: [] };
+            pState[p] = { caption: d.caption || "", hashtags: d.hashtags || [] };
+          }
+          for (const a of (accountsRes.accounts || [])) {
+            pAccount[a.platform] = { id: a.id, platform: a.platform, username: a.username || a.fullname || "", pageId: a.pages && a.pages[0] ? a.pages[0].id : null, pageName: a.pages && a.pages[0] ? (a.pages[0].name || a.pages[0].title || a.pages[0].username || "") : "" };
+          }
+          // update the subline on each platform card with the connected account
+          for (const plat of ["instagram", "linkedin", "facebook"]) {
+            const acc = pAccount[plat];
+            const subId = "platsub" + plat[0].toUpperCase() + plat.slice(1);
+            const el = $(subId);
+            if (el) el.textContent = acc
+              ? (acc.pageName ? acc.pageName : (acc.username || "@" + acc.id))
+              : "— no account connected —";
+          }
+          pLoadedForJob = currentJobId;
+          switchPlatform("instagram");
+        } catch (e) {
+          $("postResult").innerHTML = '<span class="bad">' + e.message + "</span>";
+          $("postPreview").innerHTML = '<span class="err">Could not load: ' + e.message + '</span>';
+        }
+      }
+
+      function switchPlatform(p) {
+        pActive = p;
+        document.querySelectorAll(".platcard").forEach((el) => el.classList.toggle("active", el.dataset.platform === p));
+        $("postCaption").value = pState[p].caption || "";
+        $("postHashtags").value = (pState[p].hashtags || []).join(" ");
+        const acc = pAccount[p];
+        const activeName = $("activePlatformName"); if (activeName) activeName.textContent = PLATFORM_LABEL[p];
+        $("postSubmit").textContent = `✓ Approve & post to ${PLATFORM_LABEL[p]}`;
+        $("postSubmit").disabled = !acc;
+        renderPreview();
+      }
+
+      function escapeHtml(s) { return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+      function renderPreview() {
+        const p = pActive;
+        const cap = pState[p].caption || "";
+        const tags = (pState[p].hashtags || []).join(" ");
+        const brandName = escapeHtml(BRAND_INFO.name);
+        const initial = escapeHtml((BRAND_INFO.wordmark || BRAND_INFO.name || "B").slice(0, 1).toUpperCase());
+        const handle = escapeHtml((BRAND_INFO.handle || "").replace(/^@/, "") || brandName.toLowerCase().replace(/\s+/g, ""));
+        const videoSrc = currentJobId ? `/download/${currentJobId}?inline=1` : "";
+        const video = videoSrc ? `<video autoplay muted loop playsinline preload="metadata" src="${videoSrc}"></video>` : "";
+        let html = "";
+        if (p === "instagram") {
+          html = `<div class="preview ig">
+            <div class="hdr"><div class="avatar"><div>${initial}</div></div><div class="uname">${handle}</div><div class="more">⋯</div></div>
+            <div class="vidwrap">${video}</div>
+            <div class="actions"><span>♡</span><span>💬</span><span>↗</span><span class="save">🔖</span></div>
+            <div class="body"><span class="un">${handle}</span>${escapeHtml(cap)}${tags ? "\n\n" + '<span class="tags">' + escapeHtml(tags) + "</span>" : ""}</div>
+          </div>`;
+        } else if (p === "linkedin") {
+          html = `<div class="preview li">
+            <div class="hdr"><div class="avatar">${initial}</div><div class="who"><div class="name">${brandName}</div><div class="meta">${escapeHtml(BRAND_INFO.name)} • Now</div></div></div>
+            <div class="body">${escapeHtml(cap)}${tags ? '\n\n<span class="tags">' + escapeHtml(tags) + "</span>" : ""}</div>
+            <div class="vidwrap">${video}</div>
+            <div class="actions"><span>👍 Like</span><span>💬 Comment</span><span>🔁 Repost</span><span>↗ Send</span></div>
+          </div>`;
+        } else {
+          html = `<div class="preview fb">
+            <div class="hdr"><div class="avatar">${initial}</div><div class="who"><div class="name">${brandName}</div><div class="meta">Just now · 🌐</div></div></div>
+            <div class="body">${escapeHtml(cap)}${tags ? '\n\n<span class="tags">' + escapeHtml(tags) + "</span>" : ""}</div>
+            <div class="vidwrap">${video}</div>
+            <div class="actions"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+          </div>`;
+        }
+        $("postPreview").innerHTML = html;
+      }
+
+      // turn the datetime-local value into ISO 8601 with the browser's local offset
+      function localToIso(v) {
+        if (!v) return null;
+        const d = new Date(v);
+        const pad = (n) => String(n).padStart(2, "0");
+        const off = -d.getTimezoneOffset();
+        const sign = off >= 0 ? "+" : "-";
+        const a = Math.abs(off);
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${sign}${pad((a / 60) | 0)}:${pad(a % 60)}`;
+      }
+
+      async function submitPost() {
+        const sub = $("postSubmit");
+        const p = pActive;
+        const acc = pAccount[p];
+        if (!acc) return;
+        sub.disabled = true; sub.textContent = "Posting…";
+        $("postResult").textContent = "";
+        try {
+          // snapshot the active textareas into state (in case last keystroke wasn't flushed)
+          pState[p].caption = ($("postCaption").value || "").trim();
+          pState[p].hashtags = ($("postHashtags").value || "").trim().split(/\s+/).filter(Boolean);
+          let scheduledTime = null;
+          if ($("postSchedule").value === "schedule") {
+            const v = $("postWhen").value;
+            if (!v) throw new Error("Pick a date and time to schedule.");
+            scheduledTime = localToIso(v);
+          }
+          const r = await fetch("/post", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+            jobId: currentJobId,
+            caption: pState[p].caption,
+            hashtags: pState[p].hashtags,
+            accounts: [{ id: acc.id, platform: acc.platform, pageId: acc.pageId }],
+            scheduledTime,
+          })});
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Post failed");
+          const lines = (j.results || []).map((x) => x.ok
+            ? `<div class="ok">${PLATFORM_LABEL[x.platform] || x.platform} — ${x.when === "now" ? "posted" : "scheduled for " + x.when}${x.id ? " (id " + x.id + ")" : ""}</div>`
+            : `<div class="bad">${PLATFORM_LABEL[x.platform] || x.platform} — ${x.error}</div>`);
+          $("postResult").innerHTML = lines.join("");
+        } catch (e) {
+          $("postResult").innerHTML = '<span class="bad">' + e.message + "</span>";
+        } finally {
+          sub.disabled = false; sub.textContent = `Approve & post to ${PLATFORM_LABEL[p]}`;
+        }
+      }
+
+      // Apply a plain-English tweak to the active platform's caption + hashtags.
+      async function refineCaption() {
+        const p = pActive;
+        const instruction = ($("postRefineBox").value || "").trim();
+        if (!instruction) { $("postRefineBox").focus(); return; }
+        const btn = $("postRefineBtn");
+        btn.disabled = true; btn.textContent = "✨ Applying…";
+        $("postRefineNote").textContent = "";
+        try {
+          const r = await fetch("/post/refine", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+            platform: p,
+            caption: pState[p].caption,
+            hashtags: pState[p].hashtags,
+            instruction,
+            meta: buildMeta(),
+          })});
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Refine failed");
+          pState[p].caption = j.caption || "";
+          pState[p].hashtags = j.hashtags || [];
+          $("postCaption").value = pState[p].caption;
+          $("postHashtags").value = pState[p].hashtags.join(" ");
+          renderPreview();
+          $("postRefineBox").value = "";
+          $("postRefineNote").textContent = "Updated ✓";
+        } catch (e) {
+          $("postRefineNote").innerHTML = '<span class="bad">' + e.message + "</span>";
+        } finally {
+          btn.disabled = false; btn.textContent = "Apply caption changes";
+        }
       }
 
       async function refine() {
