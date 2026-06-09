@@ -46,6 +46,14 @@
       /* header */
       header { margin-bottom: 34px; }
       .brandrow { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+      .settingsbtn {
+        margin-left: auto; background: transparent; border: 1px solid var(--line);
+        color: var(--muted); border-radius: 999px; padding: 6px 12px 6px 9px;
+        font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px; transition: 0.16s;
+      }
+      .settingsbtn:hover { border-color: var(--accent); color: var(--text); background: rgba(59,203,151,0.06); }
+      .settingsbtn svg { width: 14px; height: 14px; }
       .brandrow img { height: 34px; width: auto; display: block; }
       .brandrow .wordmark {
         font-weight: 800; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
@@ -205,7 +213,120 @@
       /* platform preview "chrome" — light cards on the dark page, so they actually feel like Insta/LinkedIn/FB */
       .preview { background: #fff; color: #111; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; max-width: 380px; margin: 0 auto; }
       .preview .vidwrap { background: #000; display: block; overflow: hidden; position: relative; aspect-ratio: 9 / 16; }
-      .preview .vidwrap video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; margin: 0; border-radius: 0; box-shadow: none; }
+      .preview .vidwrap.fmt-reels { aspect-ratio: 9 / 16; }
+      .preview .vidwrap.fmt-square { aspect-ratio: 1 / 1; }
+      .preview .vidwrap.fmt-landscape { aspect-ratio: 16 / 9; }
+      .preview .vidwrap video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; background: #000; margin: 0; border-radius: 0; box-shadow: none; }
+
+      /* per-format mini progress bars on step 3, and the render-status strip on step 4 */
+      .fmtbars { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+      .fmtbar { display: grid; grid-template-columns: 92px 1fr 48px; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
+      .fmtbar .lbl { font-weight: 700; color: var(--text); font-size: 12px; letter-spacing: 0.04em; }
+      .fmtbar .lbl small { display: block; font-weight: 400; color: var(--muted); font-size: 10.5px; letter-spacing: 0; }
+      .fmtbar .mini { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; position: relative; }
+      .fmtbar .mini > div { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.3s ease; }
+      .fmtbar.done .mini > div { background: var(--accent); }
+      .fmtbar.error .mini > div { background: var(--danger); }
+      .fmtbar .pct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text); }
+      .fmtbar.done .pct::before { content: "✓ "; color: var(--accent); }
+      .fmtbar.error .pct::before { content: "✕ "; color: var(--danger); }
+
+      /* step-4 render-status strip (compact, above the platform cards) */
+      .renderstrip { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 14px; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 16px; font-size: 12.5px; color: var(--muted); }
+      .renderstrip .chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text); }
+      .renderstrip .chip.pending { color: var(--muted); font-weight: 500; }
+      .renderstrip .chip.done::before { content: "✓"; color: var(--accent); font-weight: 800; }
+      .renderstrip .chip.rendering::before { content: "•"; color: var(--accent-2); animation: shimmer 1s infinite; }
+      .renderstrip .chip.error::before { content: "✕"; color: var(--danger); }
+      .renderstrip .chip.pending::before { content: "○"; color: var(--muted); }
+
+      /* brand setup — three intake cards side by side */
+      .intakegrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+      @media (max-width: 800px) { .intakegrid { grid-template-columns: 1fr; } }
+      .intakecard {
+        background: var(--panel2); border: 1.5px solid var(--line); border-radius: 14px;
+        padding: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 200px;
+      }
+      .intakecard:hover { border-color: #4a5d80; }
+      .intakehead { display: flex; align-items: center; gap: 10px; }
+      .intakeicon { font-size: 22px; line-height: 1; }
+      .intaketitle { font-weight: 700; color: var(--text); font-size: 16px; }
+      .intakebody { color: var(--muted); font-size: 13px; line-height: 1.55; flex: 1; }
+      .intakecard input[type=url] {
+        background: var(--panel); border: 1px solid var(--line); color: var(--text);
+        border-radius: 8px; padding: 9px 11px; font-size: 13px; font-family: inherit;
+      }
+      .intakedrop {
+        background: var(--panel); border: 1.5px dashed var(--line); border-radius: 10px;
+        padding: 22px 12px; text-align: center; color: var(--muted); font-size: 12.5px;
+        cursor: pointer; transition: 0.16s; min-height: 60px; display: grid; place-items: center;
+        margin-top: auto;
+      }
+      .intakedrop:hover, .intakedrop.over { border-color: var(--accent); color: var(--text); background: rgba(59,203,151,0.06); }
+      .intakelogopreview { max-width: 120px; max-height: 60px; margin-top: 8px; align-self: center; background: var(--panel); border-radius: 6px; padding: 6px; }
+      .intakestatus { font-size: 12px; color: var(--muted); min-height: 16px; line-height: 1.4; }
+      .intakestatus.ok { color: var(--accent); }
+      .intakestatus.err { color: var(--danger); }
+
+      .brandpreview { background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
+      .brandpreviewlabel { font-size: 11.5px; color: var(--muted); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+      .brandpreview .swatchchip { display: inline-block; width: 18px; height: 18px; border-radius: 4px; vertical-align: -3px; margin-right: 6px; border: 1px solid rgba(255,255,255,0.15); }
+
+      .manualfallback { margin-top: 14px; padding: 12px 16px; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; }
+      .manualfallback summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--muted); padding: 4px 0; user-select: none; }
+      .manualfallback summary:hover { color: var(--text); }
+      .manualfallback[open] summary { color: var(--text); margin-bottom: 6px; }
+
+      /* brand voice editor — list of extra example boxes per platform */
+      .voiceList { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+      .voiceList textarea { width: 100%; }
+      .voiceList .voiceRow { position: relative; }
+      .voiceList .voiceRow button.del {
+        position: absolute; top: 6px; right: 8px; background: var(--panel);
+        border: 1px solid var(--line); color: var(--muted); border-radius: 6px;
+        padding: 2px 8px; font-size: 11px; cursor: pointer; font-family: inherit;
+      }
+      .voiceList .voiceRow button.del:hover { color: var(--danger); border-color: var(--danger); }
+
+      /* mode picker on entry */
+      .modepicker { padding: 36px; }
+      .moderow { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      @media (max-width: 640px) { .moderow { grid-template-columns: 1fr; } }
+      .modecard {
+        background: var(--panel2); border: 1.5px solid var(--line); border-radius: 16px;
+        padding: 26px 22px; text-align: left; cursor: pointer; transition: 0.18s;
+        font-family: inherit; display: flex; flex-direction: column; gap: 8px;
+      }
+      .modecard:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 18px 40px -18px rgba(59,203,151,0.5); }
+      .modeicon { font-size: 36px; line-height: 1; margin-bottom: 4px; }
+      .modetitle { font-weight: 800; color: var(--text); font-size: 22px; }
+      .modesub { color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+      .modemeta { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 6px; }
+
+      /* per-media item row on the Post flow */
+      .pmlist { display: flex; flex-direction: column; gap: 10px; }
+      .pmrow {
+        display: grid; grid-template-columns: 84px 1fr auto; gap: 14px;
+        background: var(--panel2); border: 1px solid var(--line); border-radius: 12px;
+        padding: 10px; align-items: center;
+      }
+      .pmthumb { width: 84px; height: 84px; border-radius: 8px; overflow: hidden; background: #000; display: grid; place-items: center; position: relative; }
+      .pmthumb img, .pmthumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .pmthumb .badge { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.65); color: #fff; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; }
+      .pmmain { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+      .pmmain input { background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px 11px; font-size: 13.5px; font-family: inherit; }
+      .pmmain input::placeholder { color: var(--muted); }
+      .pmmeta { font-size: 11.5px; color: var(--muted); }
+      .pmactions { display: flex; flex-direction: column; gap: 4px; }
+      .pmactions button { background: var(--panel); border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+      .pmactions button:hover { color: var(--text); border-color: var(--accent); }
+
+      /* per-platform format pills on each platform card */
+      .platfmts { display: flex; justify-content: center; gap: 4px; margin-top: 6px; }
+      .platfmt { font-size: 10.5px; font-weight: 700; padding: 3px 7px; border-radius: 99px; background: var(--panel); color: var(--muted); border: 1px solid var(--line); cursor: pointer; transition: 0.12s; letter-spacing: 0.02em; }
+      .platfmt.on { background: var(--accent); color: #08121e; border-color: var(--accent); box-shadow: 0 0 0 1px rgba(59,203,151,0.25); }
+      .platfmt:disabled, .platfmt[aria-disabled="true"] { opacity: 0.35; cursor: not-allowed; }
+      .platfmt:hover:not(:disabled):not(.on) { color: var(--text); border-color: #4a5d80; }
 
       /* INSTAGRAM */
       .preview.ig .hdr { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
@@ -238,9 +359,23 @@
         background: var(--panel2); border: 1.5px solid var(--line); border-radius: 14px;
         padding: 18px 14px; cursor: pointer; transition: 0.18s; font-family: inherit;
         display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+        position: relative;
       }
       .platcard:hover { border-color: #4a5d80; transform: translateY(-1px); }
       .platcard.active { border-color: var(--accent); background: rgba(59,203,151,0.08); box-shadow: 0 8px 22px -10px rgba(59,203,151,0.5); }
+      .platcard.selected:not(.active) { border-color: rgba(59,203,151,0.55); background: rgba(59,203,151,0.04); }
+      /* selection checkbox in the top-right corner of each platform card */
+      .platpick {
+        position: absolute; top: 10px; right: 10px;
+        width: 22px; height: 22px; border-radius: 6px;
+        border: 1.5px solid var(--line); background: var(--panel);
+        display: grid; place-items: center;
+        cursor: pointer; transition: 0.15s; padding: 0;
+      }
+      .platpick:hover { border-color: var(--accent); }
+      .platpick svg { width: 14px; height: 14px; opacity: 0; transition: 0.15s; }
+      .platpick.on { background: var(--accent); border-color: var(--accent); }
+      .platpick.on svg { opacity: 1; }
       .platlogo {
         width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center;
         font-weight: 800; color: #fff; font-size: 17px; letter-spacing: -0.5px;
@@ -336,24 +471,190 @@
         <div class="brandrow">
           <img id="brandLogo" src="/brand/wsti-logo.png" alt="" onerror="this.style.display='none'" />
           <span class="wordmark" id="brandName">Western Sydney Tech Innovators</span>
+          <button class="settingsbtn" id="headerSettings" type="button" title="Brand settings — voice, logo, colours">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Brand
+          </button>
         </div>
         <div class="logo">Reel Maker</div>
         <h1>Make a <em>branded</em> reel<br />in a couple of minutes.</h1>
         <div class="sub" id="brandTagline">Drop your event photos in, add a few notes, and let Claude arrange them into a story. Pick a format, hit render — the same polished look, every time.</div>
       </header>
 
-      <nav class="steps" id="steps">
-        <button class="step-pill active" type="button" data-step="1"><b>1</b> Photos &amp; story</button>
-        <span class="step-line"></span>
-        <button class="step-pill" type="button" data-step="2"><b>2</b> Text &amp; format</button>
-        <span class="step-line"></span>
-        <button class="step-pill" type="button" data-step="3"><b>3</b> Your reel</button>
-        <span class="step-line"></span>
-        <button class="step-pill" type="button" data-step="4"><b>4</b> Post</button>
+      <!-- Steps nav. Labels swap based on mode (Reel vs Post). Hidden until a mode is picked. -->
+      <nav class="steps" id="steps" hidden>
+        <button class="step-pill active" type="button" data-step="1"><b>1</b> <span data-label-1>Photos &amp; story</span></button>
+        <span class="step-line" data-line="2"></span>
+        <button class="step-pill" type="button" data-step="2"><b>2</b> <span data-label-2>Text &amp; format</span></button>
+        <span class="step-line" data-line="3"></span>
+        <button class="step-pill" type="button" data-step="3"><b>3</b> <span data-label-3>Your reel</span></button>
+        <span class="step-line" data-line="4"></span>
+        <button class="step-pill" type="button" data-step="4"><b>4</b> <span data-label-4>Post</span></button>
       </nav>
 
+      <!-- ============ STEP 0 — MODE PICKER ============ -->
+      <section class="page" id="page0">
+        <div class="card modepicker">
+          <h2 style="text-align:center; border:none; padding:0; margin-bottom:8px;">What are you making today?</h2>
+          <div class="hint" style="text-align:center; margin-bottom:28px;">Pick a flow — you can come back any time.</div>
+          <div class="moderow">
+            <button class="modecard" type="button" data-mode="reel">
+              <div class="modeicon">🎬</div>
+              <div class="modetitle">Reel</div>
+              <div class="modesub">Photos → animated branded video with captions &amp; music. Step-by-step wizard.</div>
+              <div class="modemeta">~60–90s render · 6 templates</div>
+            </button>
+            <button class="modecard" type="button" data-mode="post">
+              <div class="modeicon">🖼️</div>
+              <div class="modetitle">Post</div>
+              <div class="modesub">Drop photos (and videos — soon), auto-cropped to each platform's aspect ratio, optional caption overlay, post as a carousel or singles.</div>
+              <div class="modemeta">No render time · ships immediately</div>
+            </button>
+          </div>
+          <div style="text-align:center; margin-top:18px;">
+            <button class="skiplink" id="openVoice" type="button">⚙️ Brand voice settings — teach the AI your tone →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ BRAND VOICE PAGE ============ -->
+      <section class="page" id="pageVoice" hidden>
+        <div class="card">
+          <h2>Brand setup <span class="hint" style="font-weight:400; font-size:13px;">— pick the easiest one</span></h2>
+          <div class="hint" style="margin-bottom:18px;">Teach the AI your brand once. Use any of the three quick options below — or all of them. Each gets you closer to on-brand captions.</div>
+
+          <!-- THREE EASY INTAKES -->
+          <div class="intakegrid">
+            <!-- 1. WEBSITE URL -->
+            <div class="intakecard">
+              <div class="intakehead"><span class="intakeicon">🌐</span><span class="intaketitle">Got a website?</span></div>
+              <div class="intakebody">Paste your homepage URL. We'll read the page and pull out your voice, name, and brand colour.</div>
+              <div style="display:flex; gap:8px; margin-top:auto;">
+                <input id="brandUrlInput" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="yourbrand.org" style="flex:1;" />
+                <button class="btn ghost" id="brandUrlBtn" type="button" style="width:auto; margin:0;">Extract</button>
+              </div>
+              <div class="intakestatus" id="brandUrlStatus"></div>
+            </div>
+
+            <!-- 2. BRAND DOC -->
+            <div class="intakecard">
+              <div class="intakehead"><span class="intakeicon">📄</span><span class="intaketitle">Got a brand doc?</span></div>
+              <div class="intakebody">Drop a PDF, DOCX, or TXT brand book. We'll distil the voice, tone, themes — anything useful.</div>
+              <label class="intakedrop" id="brandDocDrop" for="brandDocInput">
+                Click or drop a PDF / DOCX / TXT
+              </label>
+              <input id="brandDocInput" type="file" accept=".pdf,.docx,.txt,.md" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />
+              <div class="intakestatus" id="brandDocStatus"></div>
+            </div>
+
+            <!-- 3. LOGO -->
+            <div class="intakecard">
+              <div class="intakehead"><span class="intakeicon">🖼️</span><span class="intaketitle">Got a logo?</span></div>
+              <div class="intakebody">Drop a PNG / SVG / WEBP of your logo. It'll show up on every reel automatically.</div>
+              <label class="intakedrop" id="brandLogoDrop" for="brandLogoInput">
+                Click or drop your logo image
+              </label>
+              <input id="brandLogoInput" type="file" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />
+              <img id="brandLogoPreview" class="intakelogopreview" style="display:none;" alt="Current logo" />
+              <div class="intakestatus" id="brandLogoStatus"></div>
+            </div>
+          </div>
+
+          <!-- BRAND PREVIEW (what we have so far) -->
+          <div class="brandpreview" id="brandPreviewBox">
+            <div class="brandpreviewlabel">What we know about your brand</div>
+            <div id="brandPreviewBody" class="hint">Loading…</div>
+          </div>
+
+          <!-- FALLBACK: manual paste -->
+          <details class="manualfallback">
+            <summary>Or paste real posts manually (advanced — best results)</summary>
+            <div class="hint" style="margin:12px 0 18px;">Paste 3–5 real posts per platform. This beats any abstract voice description — even after the URL / doc setup.</div>
+            <div class="field">
+              <label>Instagram posts</label>
+              <textarea id="voiceIg" rows="6" placeholder="Paste one real Instagram caption here."></textarea>
+              <div id="voiceIgList" class="voiceList"></div>
+              <button class="btn ghost" type="button" data-voice-add="ig">+ Add another Instagram example</button>
+            </div>
+            <div class="field">
+              <label>LinkedIn posts</label>
+              <textarea id="voiceLi" rows="6" placeholder="Paste a real LinkedIn post."></textarea>
+              <div id="voiceLiList" class="voiceList"></div>
+              <button class="btn ghost" type="button" data-voice-add="li">+ Add another LinkedIn example</button>
+            </div>
+            <div class="field">
+              <label>Facebook posts <span class="hint" style="font-weight:400">(optional)</span></label>
+              <textarea id="voiceFb" rows="6" placeholder="Paste a real Facebook post."></textarea>
+              <div id="voiceFbList" class="voiceList"></div>
+              <button class="btn ghost" type="button" data-voice-add="fb">+ Add another Facebook example</button>
+            </div>
+            <button class="btn ghost" id="voiceSave" type="button" style="width:auto; margin-top:10px;">Save manual examples</button>
+            <div id="voiceStatus" class="hint" style="margin-top:10px;"></div>
+          </details>
+
+          <div class="pagenav" style="margin-top:24px;">
+            <button class="navbtn" id="voiceBack" type="button">← Back</button>
+            <button class="btn" id="voiceDone" type="button" style="width:auto">Done — start making →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ POST FLOW — MEDIA + EDIT ============ -->
+      <section class="page" id="pagePostEdit" hidden>
+        <div class="card">
+          <h2><span class="step">1</span> Pick &amp; edit media</h2>
+          <div class="hint" style="margin-bottom:14px;">Drop your photos. We'll auto-crop them to the platform aspect you pick — no manual cropping. Each photo can carry an optional text overlay.</div>
+
+          <div class="field" style="margin-bottom:14px;">
+            <label>What's this post about? <span class="hint" style="font-weight:400">(used for narrative ordering &amp; caption AI)</span></label>
+            <textarea id="postContext" rows="2" placeholder="e.g. Saturday's AI Lab — 40 people, hands-on prompt engineering, Lailei opening, sticky-notes wall."></textarea>
+          </div>
+
+          <label class="drop" id="postDrop" for="postFiles">Click to choose photos, or drag &amp; drop them here</label>
+          <input type="file" id="postFiles" accept="image/*" multiple style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />
+
+          <div class="row3" style="margin-top:18px;">
+            <div class="field">
+              <label>Aspect ratio</label>
+              <select id="postAspect">
+                <option value="square">Square 1:1 — IG / LinkedIn / FB feed</option>
+                <option value="portrait">Portrait 4:5 — Instagram-tall</option>
+                <option value="story">Reels / Stories 9:16</option>
+                <option value="landscape">Landscape 16:9 — LinkedIn / YouTube</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Auto-enhance <span class="hint" style="font-weight:400">(sharpen + colour pop)</span></label>
+              <select id="postEnhance">
+                <option value="on">On (recommended)</option>
+                <option value="off">Off — keep original</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Crop strategy</label>
+              <select id="postCrop">
+                <option value="attention">Smart (keeps the interesting part)</option>
+                <option value="center">Centre</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:18px; gap:10px; flex-wrap:wrap;">
+            <div class="postlabel" style="margin:0;">Your media <span class="hint" style="font-weight:400; text-transform:none; letter-spacing:0;">— drag the ↑↓ arrows to reorder, or let the AI do it</span></div>
+            <button class="btn ghost" id="postNarrative" type="button" style="width:auto; margin:0; padding:8px 14px; font-size:13px;">✨ Order narratively</button>
+          </div>
+          <div id="postMediaList" style="margin-top:10px;"></div>
+
+          <div class="pagenav">
+            <button class="navbtn" id="postBack" type="button">← Back</button>
+            <button class="btn" id="postContinue" type="button" style="width:auto">Continue to post →</button>
+          </div>
+          <div id="postPrepareStatus" class="hint" style="margin-top:10px;"></div>
+        </div>
+      </section>
+
       <!-- ============ STEP 1 ============ -->
-      <section class="page" id="page1">
+      <section class="page" id="page1" hidden>
       <div class="card">
         <h2><span class="step">1</span> Photos &amp; story</h2>
         <div class="field">
@@ -409,13 +710,24 @@
 
       <div class="card">
         <h2><span class="step">3</span> Look &amp; format</h2>
+        <div class="field">
+          <label>Visual style <span class="hint" style="font-weight:400">— same brand, different vibe</span></label>
+          <select id="template">
+            <option value="signature">Signature — bold &amp; energetic (default, best for IG Reels)</option>
+            <option value="polaroid">Polaroid Album — warm scrapbook with handwritten captions</option>
+            <option value="editorial">Editorial — magazine serif, restrained (great for LinkedIn)</option>
+            <option value="bold">Bold Typography — huge stacked type, photo as backdrop</option>
+            <option value="documentary">Documentary — cinematic letterbox + subtitle captions</option>
+            <option value="mono">Minimal Mono — black &amp; white with an accent splash</option>
+          </select>
+        </div>
         <div class="row3">
           <div class="field">
-            <label>Format</label>
+            <label>Format <span class="hint" style="font-weight:400">— picks the aspect ratio</span></label>
             <select id="format">
-              <option value="reels">Reels / Stories (9:16)</option>
-              <option value="square">LinkedIn / Meetup (1:1)</option>
-              <option value="landscape">YouTube / Web (16:9)</option>
+              <option value="reels">Reels / Stories (9:16) — Instagram / Facebook Reels</option>
+              <option value="square">Square (1:1) — LinkedIn / IG feed / FB feed</option>
+              <option value="landscape">Landscape (16:9) — YouTube / LinkedIn / FB feed</option>
             </select>
           </div>
           <div class="field">
@@ -477,19 +789,22 @@
         <div class="card postpagecard">
           <h2><span class="step">4</span> Post to socials</h2>
 
-          <!-- big platform picker -->
+          <!-- big platform picker — tap the body to edit that platform's caption, tap the checkbox to toggle whether it'll be posted to -->
           <div class="platgrid">
-            <button class="platcard ig active" type="button" data-platform="instagram">
+            <button class="platcard ig active selected" type="button" data-platform="instagram">
+              <span class="platpick on" data-pick="instagram" role="checkbox" aria-checked="true" aria-label="Post to Instagram"><svg viewBox="0 0 20 20" fill="none" stroke="#0b1019" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 10 8 14 16 6"/></svg></span>
               <div class="platlogo igbg">IG</div>
               <div class="platname">Instagram</div>
               <div class="platsub" id="platsubInstagram">— loading account —</div>
             </button>
-            <button class="platcard li" type="button" data-platform="linkedin">
+            <button class="platcard li selected" type="button" data-platform="linkedin">
+              <span class="platpick on" data-pick="linkedin" role="checkbox" aria-checked="true" aria-label="Post to LinkedIn"><svg viewBox="0 0 20 20" fill="none" stroke="#0b1019" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 10 8 14 16 6"/></svg></span>
               <div class="platlogo libg">in</div>
               <div class="platname">LinkedIn</div>
               <div class="platsub" id="platsubLinkedin">— loading account —</div>
             </button>
-            <button class="platcard fb" type="button" data-platform="facebook">
+            <button class="platcard fb selected" type="button" data-platform="facebook">
+              <span class="platpick on" data-pick="facebook" role="checkbox" aria-checked="true" aria-label="Post to Facebook"><svg viewBox="0 0 20 20" fill="none" stroke="#0b1019" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 10 8 14 16 6"/></svg></span>
               <div class="platlogo fbbg">f</div>
               <div class="platname">Facebook</div>
               <div class="platsub" id="platsubFacebook">— loading account —</div>
@@ -518,6 +833,14 @@
                 <button class="btn ghost" id="postRefineBtn" type="button">Apply changes</button>
                 <div class="hint" id="postRefineNote"></div>
               </div>
+              <!-- Post-mode only: carousel vs separate when multiple photos. Hidden in reel mode. -->
+              <div class="postsection" id="postCarouselSection" hidden>
+                <label>Multiple photos</label>
+                <select id="postCarousel">
+                  <option value="carousel">Post as one carousel (recommended)</option>
+                  <option value="separate">Post each photo as a separate post</option>
+                </select>
+              </div>
               <div class="postsection">
                 <label>When to post</label>
                 <div class="postwhen">
@@ -536,7 +859,8 @@
 
         <div class="pagenav">
           <button class="navbtn" id="backTo3" type="button">← Back to your reel</button>
-          <button class="btn ghost" id="createNew2" type="button" style="width:auto">+ Create new reel</button>
+          <button class="navbtn" id="backToPostEdit" type="button" hidden>← Back to edit media</button>
+          <button class="btn ghost" id="createNew2" type="button" style="width:auto">+ Create new</button>
         </div>
 
         <!-- Hidden helpers used by the existing post-account label code (kept to avoid touching that logic) -->
@@ -550,29 +874,454 @@
       let slides = []; // [{ photos: [{file,url,context}], caption }]
       const flatPhotos = () => slides.flatMap((s) => s.photos);
 
-      // --- wizard navigation (purely show/hide; all logic/IDs unchanged) ---
-      const PAGES = ["page1", "page2", "page3", "page4"];
-      let currentPage = "page1";
+      // --- wizard navigation -------------------------------------------------
+      // Two flows share the same set of pages: Reel (page1→2→3→4) and Post
+      // (pagePostEdit→page4). The mode picker (page0) is the entry point.
+      const ALL_PAGES = ["page0", "page1", "page2", "page3", "page4", "pagePostEdit", "pageVoice"];
+      // Per-mode mapping from step number to page id. Step pills are repainted
+      // accordingly so each mode shows only the steps that belong to it.
+      const MODE_FLOWS = {
+        reel: { 1: { page: "page1", label: "Photos & story" }, 2: { page: "page2", label: "Text & format" }, 3: { page: "page3", label: "Your reel" }, 4: { page: "page4", label: "Post" } },
+        post: { 1: { page: "pagePostEdit", label: "Pick & edit media" }, 2: { page: "page4", label: "Post" } },
+      };
+      let currentPage = "page0";
+      let currentMode = null; // "reel" | "post" | null (mode-picker still showing)
       let currentJobId = null;
+
+      function setMode(mode) {
+        currentMode = mode;
+        const flow = MODE_FLOWS[mode];
+        // Show / hide / relabel each pill based on whether this mode uses that step number.
+        document.querySelectorAll(".step-pill").forEach((el) => {
+          const n = Number(el.dataset.step);
+          const slot = flow[n];
+          el.hidden = !slot;
+          if (slot) {
+            const lbl = el.querySelector(`[data-label-${n}]`);
+            if (lbl) lbl.textContent = slot.label;
+            el.dataset.page = slot.page;
+          }
+        });
+        // Hide the lines that aren't between two visible pills.
+        document.querySelectorAll(".step-line").forEach((line, i) => {
+          // Lines sit between pills; index i corresponds to the line after pill i+1.
+          // Simpler: hide a line if either of its neighbouring pills is hidden.
+          const prev = line.previousElementSibling, next = line.nextElementSibling;
+          line.hidden = (prev && prev.hidden) || (next && next.hidden);
+        });
+        $("steps").hidden = false;
+      }
+
       function goTo(id) {
         currentPage = id;
-        PAGES.forEach((p) => { $(p).hidden = p !== id; });
+        ALL_PAGES.forEach((p) => { const el = $(p); if (el) el.hidden = p !== id; });
+        // Repaint pill states. A pill is "active" if its current page matches;
+        // "done" if its slot comes before the current page in the active flow.
+        const flow = currentMode ? MODE_FLOWS[currentMode] : null;
+        const stepOfCurrent = flow ? Object.keys(flow).find((k) => flow[k].page === id) : null;
         document.querySelectorAll(".step-pill").forEach((el) => {
-          const n = "page" + el.dataset.step;
-          el.classList.toggle("active", n === id);
-          el.classList.toggle("done", PAGES.indexOf(n) < PAGES.indexOf(id));
+          if (el.hidden) return;
+          const n = el.dataset.step;
+          el.classList.toggle("active", flow && flow[n] && flow[n].page === id);
+          el.classList.toggle("done", flow && stepOfCurrent && Number(n) < Number(stepOfCurrent));
         });
+        // Mode picker + Brand settings have no steps nav.
+        $("steps").hidden = id === "page0" || id === "pageVoice" || !currentMode;
         window.scrollTo({ top: 0, behavior: "smooth" });
         scheduleSave();
         if (id === "page4" && typeof enterPostPage === "function") enterPostPage();
+        if (id === "pagePostEdit" && typeof enterPostEdit === "function") enterPostEdit();
       }
+
+      // Mode-picker click handlers.
+      document.querySelectorAll(".modecard").forEach((el) => {
+        el.onclick = () => {
+          const mode = el.dataset.mode;
+          setMode(mode);
+          const first = MODE_FLOWS[mode][1].page;
+          goTo(first);
+        };
+      });
+
+      // ---- Brand voice editor ------------------------------------------------
+      // Lets the user paste real WSTI posts per platform. Saved into
+      // brand.config.json via /api/voice-examples so /post/draft picks them up
+      // without a server restart.
+      const VOICE_PLATFORMS = [
+        { key: "instagram", short: "ig" },
+        { key: "linkedin", short: "li" },
+        { key: "facebook", short: "fb" },
+      ];
+      function voiceCollect(short) {
+        // The first textarea is the field itself; additional ones live inside the list.
+        const main = $("voice" + short[0].toUpperCase() + short.slice(1));
+        const list = $("voice" + short[0].toUpperCase() + short.slice(1) + "List");
+        const extras = list ? Array.from(list.querySelectorAll("textarea")).map((t) => t.value) : [];
+        return [main?.value, ...extras].map((s) => (s || "").trim()).filter(Boolean);
+      }
+      function voiceAddRow(short, value) {
+        const list = $("voice" + short[0].toUpperCase() + short.slice(1) + "List");
+        if (!list) return;
+        const row = document.createElement("div");
+        row.className = "voiceRow";
+        row.innerHTML = '<textarea rows="8" placeholder="Paste another real ' + short + ' post here…"></textarea><button class="del" type="button">Remove</button>';
+        list.appendChild(row);
+        const ta = row.querySelector("textarea");
+        if (value) ta.value = value;
+        row.querySelector(".del").onclick = () => row.remove();
+      }
+      async function openVoicePage() {
+        goTo("pageVoice");
+        ensureIntakeWired();
+        await refreshBrandPreview();
+        // Load existing manual examples on first open.
+        if (!$("pageVoice").dataset.loaded) {
+          $("pageVoice").dataset.loaded = "1";
+          try {
+            const r = await fetch("/api/voice-examples");
+            const j = await r.json();
+            for (const { key, short } of VOICE_PLATFORMS) {
+              const list = j[key] || [];
+              const main = $("voice" + short[0].toUpperCase() + short.slice(1));
+              if (main && list[0]) main.value = list[0];
+              list.slice(1).forEach((v) => voiceAddRow(short, v));
+            }
+          } catch (e) {
+            $("voiceStatus").innerHTML = '<span class="err">Could not load: ' + e.message + "</span>";
+          }
+        }
+      }
+      $("openVoice").onclick = openVoicePage;
+      // Gear icon in the header — settings reachable from any page.
+      $("headerSettings").onclick = openVoicePage;
+      $("voiceBack").onclick = () => goTo("page0");
+      $("voiceDone").onclick = () => goTo("page0");
+
+      // Refresh the "what we know" preview from /api/brand. Called after any intake save.
+      // Also re-tints the entire UI to the brand's new accent colour so the form
+      // visually morphs into the user's brand the moment a setup card succeeds.
+      async function refreshBrandPreview() {
+        try {
+          const r = await fetch("/api/brand");
+          const b = await r.json();
+          // Re-tint the UI live.
+          if (b.accent) applyBrandPalette(b.accent);
+          // Update header + tagline if they changed.
+          if (b.name) { $("brandName").textContent = b.name; document.title = b.name + " — Reel Maker"; }
+          if (b.tagline) $("brandTagline").textContent = b.tagline;
+          BRAND_INFO = { name: b.name || BRAND_INFO.name, wordmark: b.wordmark || BRAND_INFO.wordmark, accent: b.accent || BRAND_INFO.accent, handle: (b.defaultCopy && b.defaultCopy.handle) || BRAND_INFO.handle };
+          const body = $("brandPreviewBody");
+          if (body) {
+            const voiceLine = (b.voice ? b.voice : "(no voice description yet)").slice(0, 240);
+            body.innerHTML =
+              `<div style="font-weight:700; color: var(--text); font-size: 14.5px;">${escapeHtml(b.name || "(no name yet)")}</div>` +
+              `<div style="margin-top:6px;"><span class="swatchchip" style="background:${escapeHtml(b.accent || "#3bcb97")};"></span><span style="color: var(--muted); font-size: 12.5px;">${escapeHtml(b.accent || "—")}</span>` +
+              (b.defaultCopy?.handle ? ` · <span style="color: var(--muted); font-size: 12.5px;">${escapeHtml(b.defaultCopy.handle)}</span>` : "") +
+              `</div>` +
+              `<div style="margin-top:8px; color: var(--muted); font-size: 12.5px; line-height: 1.5;">${escapeHtml(voiceLine)}${b.voice && b.voice.length > 240 ? "…" : ""}</div>`;
+          }
+          // Logo preview
+          const img = $("brandLogoPreview");
+          if (img && b.logoImage) {
+            img.src = "/" + b.logoImage + "?t=" + Date.now();
+            img.style.display = "block";
+          }
+        } catch {}
+      }
+
+      // 1) Website URL extract. Accepts bare domains — we add https:// for you.
+      function normalizeBrandUrl(raw) {
+        const s = (raw || "").trim().replace(/^@/, "");
+        if (!s) return "";
+        if (/^https?:\/\//i.test(s)) return s;
+        return "https://" + s;
+      }
+      async function runBrandUrlExtract() {
+        const raw = $("brandUrlInput").value;
+        const url = normalizeBrandUrl(raw);
+        if (!url || !/\./.test(url)) { $("brandUrlStatus").className = "intakestatus err"; $("brandUrlStatus").textContent = "✕ Enter a website (e.g. yourbrand.org)"; return; }
+        const btn = $("brandUrlBtn"), status = $("brandUrlStatus");
+        btn.disabled = true; btn.textContent = "Reading…";
+        status.className = "intakestatus"; status.textContent = "Fetching " + url + "…";
+        try {
+          const r = await fetch("/api/brand/from-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Failed");
+          status.className = "intakestatus ok"; status.textContent = "✓ Saved: " + (j.applied?.name || "brand updated");
+          await refreshBrandPreview();
+        } catch (e) {
+          status.className = "intakestatus err"; status.textContent = "✕ " + e.message;
+        } finally {
+          btn.disabled = false; btn.textContent = "Extract";
+        }
+      }
+      $("brandUrlBtn").onclick = runBrandUrlExtract;
+      $("brandUrlInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); runBrandUrlExtract(); } });
+
+      // 2) Brand doc upload (PDF / DOCX / TXT) — uses <label for=...> for the
+      // click-to-open; we only wire drag-drop + change here.
+      function wireDocDrop() {
+        const drop = $("brandDocDrop");
+        const input = $("brandDocInput");
+        drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+        drop.ondragleave = () => drop.classList.remove("over");
+        drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) uploadBrandDoc(e.dataTransfer.files[0]); };
+        input.onchange = (e) => { if (e.target.files[0]) uploadBrandDoc(e.target.files[0]); };
+      }
+      async function uploadBrandDoc(file) {
+        const status = $("brandDocStatus");
+        status.className = "intakestatus"; status.textContent = "Reading " + file.name + "…";
+        try {
+          const fd = new FormData(); fd.append("doc", file, file.name);
+          const r = await fetch("/api/brand/from-doc", { method: "POST", body: fd });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Failed");
+          status.className = "intakestatus ok"; status.textContent = "✓ Saved from " + file.name + " (" + j.charsParsed + " chars parsed)";
+          await refreshBrandPreview();
+        } catch (e) {
+          status.className = "intakestatus err"; status.textContent = "✕ " + e.message;
+        }
+      }
+
+      // 3) Logo upload — same <label for=...> pattern.
+      function wireLogoDrop() {
+        const drop = $("brandLogoDrop");
+        const input = $("brandLogoInput");
+        drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+        drop.ondragleave = () => drop.classList.remove("over");
+        drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) uploadBrandLogo(e.dataTransfer.files[0]); };
+        input.onchange = (e) => { if (e.target.files[0]) uploadBrandLogo(e.target.files[0]); };
+      }
+      async function uploadBrandLogo(file) {
+        const status = $("brandLogoStatus");
+        if (!file.type.startsWith("image/")) { status.className = "intakestatus err"; status.textContent = "✕ Image files only"; return; }
+        status.className = "intakestatus"; status.textContent = "Uploading…";
+        try {
+          const fd = new FormData(); fd.append("logo", file, file.name);
+          const r = await fetch("/api/brand/logo", { method: "POST", body: fd });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Failed");
+          status.className = "intakestatus ok"; status.textContent = "✓ Logo saved";
+          // Repaint the live logo in the header + preview.
+          if ($("brandLogo")) $("brandLogo").src = "/" + j.logoImage + "?t=" + Date.now();
+          await refreshBrandPreview();
+        } catch (e) {
+          status.className = "intakestatus err"; status.textContent = "✕ " + e.message;
+        }
+      }
+
+      // Wire the drop zones the first time the voice page opens.
+      let _intakeWired = false;
+      function ensureIntakeWired() { if (_intakeWired) return; _intakeWired = true; wireDocDrop(); wireLogoDrop(); }
+      document.querySelectorAll("[data-voice-add]").forEach((b) => {
+        b.onclick = () => voiceAddRow(b.dataset.voiceAdd);
+      });
+      $("voiceSave").onclick = async () => {
+        const btn = $("voiceSave");
+        btn.disabled = true; btn.textContent = "Saving…";
+        $("voiceStatus").textContent = "";
+        try {
+          const payload = { instagram: voiceCollect("ig"), linkedin: voiceCollect("li"), facebook: voiceCollect("fb") };
+          const r = await fetch("/api/voice-examples", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Save failed");
+          $("voiceStatus").innerHTML = '<span style="color: var(--accent);">✓ Saved — ' + j.counts.instagram + ' IG / ' + j.counts.linkedin + ' LI / ' + j.counts.facebook + ' FB examples. The next caption draft will use them.</span>';
+        } catch (e) {
+          $("voiceStatus").innerHTML = '<span class="err">' + e.message + "</span>";
+        } finally {
+          btn.disabled = false; btn.textContent = "Save voice examples";
+        }
+      };
+
       document.querySelectorAll(".step-pill").forEach((el) => {
-        el.onclick = () => goTo("page" + el.dataset.step);
+        el.onclick = () => { if (el.dataset.page) goTo(el.dataset.page); };
       });
       $("skipStory").onclick = () => goTo("page2");
       $("backTo1").onclick = () => goTo("page1");
       $("backTo2").onclick = () => goTo("page2");
       $("backTo3").onclick = () => goTo("page3");
+
+      // --- POST FLOW (Mode: post) -------------------------------------------
+      // Holds the user's dropped media plus per-item caption text. The actual
+      // image processing (sharp auto-crop + sharpen + caption overlay) happens
+      // server-side when the user hits "Continue to post".
+      let postMedia = []; // [{ id, file, url, type: "image"|"video", caption, preparedUrl?, mime? }]
+      let postPreparedAt = null; // signature of the last prepare run, so we re-prepare on edits
+
+      function postSignature() {
+        return JSON.stringify({
+          a: $("postAspect")?.value,
+          e: $("postEnhance")?.value,
+          c: $("postCrop")?.value,
+          items: postMedia.map((m) => ({ id: m.id, cap: m.caption || "" })),
+        });
+      }
+
+      function renderPostMediaList() {
+        const root = $("postMediaList");
+        if (!root) return;
+        if (!postMedia.length) {
+          root.innerHTML = '<div class="hint" style="text-align:center; padding:14px 0;">No photos yet — drop some above.</div>';
+          return;
+        }
+        root.className = "pmlist";
+        root.innerHTML = postMedia.map((m, i) => (
+          `<div class="pmrow" data-id="${m.id}">
+            <div class="pmthumb">
+              <img src="${m.url}" alt="" />
+              <span class="badge">${m.type === "video" ? "VIDEO" : i + 1}</span>
+            </div>
+            <div class="pmmain">
+              <input data-cap="${m.id}" type="text" placeholder="Optional text overlay on this photo — leave blank for none" value="${(m.caption || "").replace(/"/g, "&quot;")}" />
+              <div class="pmmeta">${m.file?.name || ""} · ${Math.round((m.file?.size || 0) / 1024)} KB</div>
+            </div>
+            <div class="pmactions">
+              <button type="button" data-up="${m.id}" title="Move up">↑</button>
+              <button type="button" data-down="${m.id}" title="Move down">↓</button>
+              <button type="button" data-del="${m.id}" title="Remove">✕</button>
+            </div>
+          </div>`
+        )).join("");
+        // Wire per-item interactions.
+        root.querySelectorAll("input[data-cap]").forEach((el) => {
+          el.oninput = (e) => {
+            const m = postMedia.find((x) => x.id === el.dataset.cap);
+            if (m) m.caption = e.target.value;
+            postPreparedAt = null; // caption changed → need to re-prepare
+          };
+        });
+        root.querySelectorAll("button[data-del]").forEach((el) => {
+          el.onclick = () => { postMedia = postMedia.filter((x) => x.id !== el.dataset.del); renderPostMediaList(); postPreparedAt = null; };
+        });
+        root.querySelectorAll("button[data-up]").forEach((el) => {
+          el.onclick = () => { const i = postMedia.findIndex((x) => x.id === el.dataset.up); if (i > 0) { [postMedia[i-1], postMedia[i]] = [postMedia[i], postMedia[i-1]]; renderPostMediaList(); postPreparedAt = null; } };
+        });
+        root.querySelectorAll("button[data-down]").forEach((el) => {
+          el.onclick = () => { const i = postMedia.findIndex((x) => x.id === el.dataset.down); if (i >= 0 && i < postMedia.length - 1) { [postMedia[i+1], postMedia[i]] = [postMedia[i], postMedia[i+1]]; renderPostMediaList(); postPreparedAt = null; } };
+        });
+      }
+
+      function addPostFiles(list) {
+        for (const file of list) {
+          // Stage 1: photos only. Videos will land in a follow-up — show a clear note for now.
+          if (!file.type.startsWith("image/")) {
+            $("postPrepareStatus").innerHTML = '<span class="err">Videos are coming in the next pass — for now only photos are accepted. Skipped: ' + file.name + '</span>';
+            continue;
+          }
+          const id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now() + Math.random());
+          postMedia.push({ id, file, url: URL.createObjectURL(file), type: "image", caption: "" });
+        }
+        renderPostMediaList();
+        postPreparedAt = null;
+      }
+
+      function enterPostEdit() {
+        // wire drop area + aspect/enhance/crop change handlers (idempotent).
+        // The <label for="postFiles"> handles click natively — we only wire
+        // drag-drop here, plus the input's onchange.
+        const drop = $("postDrop");
+        const input = $("postFiles");
+        if (drop && !drop.dataset.wired) {
+          drop.dataset.wired = "1";
+          drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+          drop.ondragleave = () => drop.classList.remove("over");
+          drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); addPostFiles(e.dataTransfer.files); };
+          input.onchange = (e) => addPostFiles(e.target.files);
+        }
+        ["postAspect", "postEnhance", "postCrop"].forEach((id) => {
+          const el = $(id); if (!el || el.dataset.wired) return;
+          el.dataset.wired = "1";
+          el.onchange = () => { postPreparedAt = null; };
+        });
+        $("postBack").onclick = () => { goTo("page0"); };
+        $("postContinue").onclick = () => preparePostAndContinue();
+        $("postNarrative").onclick = () => narrativeOrderPostMedia();
+        renderPostMediaList();
+      }
+
+      // Call /story with the dropped photos + context to get an AI-ordered
+      // narrative sequence, then reorder postMedia in place. Captions stay as
+      // the user wrote them (we only use the order from the AI).
+      async function narrativeOrderPostMedia() {
+        if (postMedia.length < 2) { $("postPrepareStatus").innerHTML = '<span class="hint">Need at least 2 photos to order narratively.</span>'; return; }
+        const btn = $("postNarrative");
+        btn.disabled = true; btn.textContent = "Thinking…";
+        $("postPrepareStatus").innerHTML = '<span>✨ Asking the AI to find the best narrative order…</span>';
+        try {
+          const fd = new FormData();
+          postMedia.forEach((m) => fd.append("photos", m.file, m.file.name));
+          fd.append("meta", JSON.stringify({
+            reelContext: $("postContext")?.value || "Photo post — " + postMedia.length + " images.",
+            format: "square", // arbitrary, /story just needs a format
+            contexts: postMedia.map((m) => m.caption || ""),
+          }));
+          const r = await fetch("/story", { method: "POST", body: fd });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Order failed");
+          // /story returns a sequence of groups: [{ indices: [i,...], caption }]
+          // Flatten the indices in order, drop duplicates, fall back to original order for anything missing.
+          const used = new Set();
+          const ordered = [];
+          (j.sequence || []).forEach((g) => {
+            (g.indices || []).forEach((k) => {
+              if (typeof k === "number" && postMedia[k] && !used.has(k)) { ordered.push(postMedia[k]); used.add(k); }
+            });
+          });
+          postMedia.forEach((m, k) => { if (!used.has(k)) ordered.push(m); });
+          postMedia = ordered;
+          postPreparedAt = null; // order changed → re-prepare needed
+          renderPostMediaList();
+          $("postPrepareStatus").innerHTML = '<span style="color: var(--accent);">✓ Reordered into a narrative arc. Drag the ↑↓ if you want to nudge anything.</span>';
+        } catch (e) {
+          $("postPrepareStatus").innerHTML = '<span class="err">' + e.message + '</span>';
+        } finally {
+          btn.disabled = false; btn.textContent = "✨ Order narratively";
+        }
+      }
+
+      async function preparePostAndContinue() {
+        if (!postMedia.length) { alert("Add at least one photo first."); return; }
+        const sig = postSignature();
+        if (postPreparedAt === sig && postMedia.every((m) => m.preparedUrl)) {
+          // Already prepared with this exact config — skip to step 4.
+          enterPostPageFromPostFlow();
+          return;
+        }
+        const btn = $("postContinue");
+        btn.disabled = true; btn.textContent = "Processing…";
+        $("postPrepareStatus").textContent = "Auto-cropping " + postMedia.length + " photo" + (postMedia.length === 1 ? "" : "s") + "…";
+        try {
+          const fd = new FormData();
+          fd.append("aspect", $("postAspect").value);
+          fd.append("enhance", $("postEnhance").value);
+          fd.append("crop", $("postCrop").value);
+          // Stable order: send a JSON manifest of ids+captions so the server knows
+          // which caption goes with which file (multer can reorder files otherwise).
+          fd.append("manifest", JSON.stringify(postMedia.map((m) => ({ id: m.id, caption: m.caption || "" }))));
+          postMedia.forEach((m) => fd.append("media", m.file, m.id + "-" + m.file.name));
+          const r = await fetch("/post-prepare", { method: "POST", body: fd });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Prepare failed");
+          // Splice the returned processed URLs back onto each item in order.
+          (j.items || []).forEach((item) => {
+            const m = postMedia.find((x) => x.id === item.id);
+            if (m) { m.preparedUrl = item.url; m.mime = item.mime; }
+          });
+          postPreparedAt = sig;
+          $("postPrepareStatus").innerHTML = '<span style="color: var(--accent);">✓ Ready — ' + (j.items?.length || 0) + ' processed.</span>';
+          enterPostPageFromPostFlow();
+        } catch (e) {
+          $("postPrepareStatus").innerHTML = '<span class="err">' + e.message + '</span>';
+        } finally {
+          btn.disabled = false; btn.textContent = "Continue to post →";
+        }
+      }
+
+      function enterPostPageFromPostFlow() {
+        // Build the meta + jump to step 4. The post page will read postMedia to
+        // collect the prepared URLs at submit time.
+        goTo("page4");
+      }
       // create new on step 4 mirrors createNew on step 3
       const createNewHandler = async () => {
         if (!confirm("Start a new reel? This clears the current photos, captions and settings.")) return;
@@ -595,7 +1344,7 @@
       // fresh, exactly as asked. Photo blobs (too big for sessionStorage) live in
       // IndexedDB and are cleared whenever there's no session draft (i.e. reopen).
       const DRAFT_KEY = "reel_draft_v1";
-      const FIELD_IDS = ["reelContext","kicker","title","subtitle","ctaHeadline","ctaSub","website","handle","format","perPhotoSeconds","accent","accentText","music"];
+      const FIELD_IDS = ["reelContext","kicker","title","subtitle","ctaHeadline","ctaSub","website","handle","format","template","perPhotoSeconds","accent","accentText","music"];
 
       function openDB() {
         return new Promise((res, rej) => {
@@ -616,7 +1365,7 @@
           const fields = {};
           FIELD_IDS.forEach((id) => { if ($(id)) fields[id] = $(id).value; });
           const draft = {
-            fields, knobs, page: currentPage, jobId: currentJobId, refineHistory,
+            fields, knobs, page: currentPage, mode: currentMode, jobId: currentJobId, refineHistory,
             slides: slides.map((s) => ({ caption: s.caption, photos: s.photos.map((p) => ({ id: p.id, name: p.file && p.file.name, context: p.context })) })),
           };
           sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -646,16 +1395,28 @@
         currentJobId = draft.jobId || null;
         // re-sync accent swatch + music preview selection
         if ($("accentText").value) $("accent").value = $("accentText").value;
-        if (draft.page && draft.page !== "page1") {
+        // Restore the mode the user was in BEFORE jumping to their last page —
+        // otherwise step pills won't render and Post-mode pages would break.
+        if (draft.mode && (draft.mode === "reel" || draft.mode === "post")) {
+          setMode(draft.mode);
+        }
+        if (draft.page && draft.page !== "page0" && draft.page !== "page1") {
           goTo(draft.page);
           if (draft.page === "page3" && currentJobId) resumeJob(currentJobId);
+        } else if (draft.mode && draft.page === "page1") {
+          goTo("page1");
         }
       }
 
+      // Single progress bar — one render, one file.
+      function renderStatusBlock(headline) {
+        return (
+          '<div class="statusrow"><span id="stxt">' + headline + '</span><span id="spct">0%</span></div>' +
+          '<div class="bar"><div id="sbar"></div></div>'
+        );
+      }
       function resumeJob(jobId) {
-        $("status").innerHTML =
-          '<div class="statusrow"><span id="stxt">Resuming…</span><span id="spct">0%</span></div>' +
-          '<div class="bar"><div id="sbar"></div></div>';
+        $("status").innerHTML = renderStatusBlock("Resuming…");
         poll(jobId);
       }
 
@@ -759,6 +1520,49 @@
       // any business (just swap brand.config.json + the logo). ---
       const hasDraft = !!sessionStorage.getItem(DRAFT_KEY);
       let BRAND_INFO = { name: "Brand", wordmark: "B", accent: "#3BCB97" };
+
+      // Re-tint the entire UI to the brand's accent colour. Sets --accent +
+      // derives --accent-2 (slightly lighter) + --ring (focus glow) from it.
+      function applyBrandPalette(hex) {
+        if (typeof hex !== "string" || !/^#[0-9a-f]{6}$/i.test(hex)) return;
+        const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+        // Convert to HSL, bump lightness ~12% for the secondary, clamp.
+        const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255;
+        let h = 0, s = 0, l = (max + min) / 2;
+        if (max !== min) {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r/255: h = ((g/255 - b/255) / d + (g < b ? 6 : 0)); break;
+            case g/255: h = ((b/255 - r/255) / d + 2); break;
+            default:    h = ((r/255 - g/255) / d + 4); break;
+          }
+          h *= 60;
+        }
+        const l2 = Math.min(0.9, l + 0.12);
+        // HSL → hex helper
+        const hslToHex = (h, s, l) => {
+          const c = (1 - Math.abs(2 * l - 1)) * s;
+          const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+          const m = l - c / 2;
+          let rp = 0, gp = 0, bp = 0;
+          if (0 <= h && h < 60)   { rp = c; gp = x; bp = 0; }
+          else if (h < 120)       { rp = x; gp = c; bp = 0; }
+          else if (h < 180)       { rp = 0; gp = c; bp = x; }
+          else if (h < 240)       { rp = 0; gp = x; bp = c; }
+          else if (h < 300)       { rp = x; gp = 0; bp = c; }
+          else                    { rp = c; gp = 0; bp = x; }
+          const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, "0");
+          return "#" + toHex(rp) + toHex(gp) + toHex(bp);
+        };
+        const accent2 = hslToHex(h, s, l2);
+        const root = document.documentElement.style;
+        root.setProperty("--accent", hex);
+        root.setProperty("--accent-2", accent2);
+        // Focus ring + button glows use the accent as an rgba — re-derive.
+        root.setProperty("--ring", `0 0 0 3px ${hex}33`);
+      }
+
       fetch("/api/brand").then((r) => r.json()).then((b) => {
         BRAND_INFO = { name: b.name || "Brand", wordmark: b.wordmark || "B", accent: b.accent || "#3BCB97", handle: (b.defaultCopy && b.defaultCopy.handle) || "" };
         document.title = (b.name ? b.name + " — " : "") + "Reel Maker";
@@ -768,7 +1572,7 @@
         if (b.name) $("brandName").textContent = b.name;
         if (b.tagline) $("brandTagline").textContent = b.tagline;
         if (b.accent && /^#[0-9a-f]{6}$/i.test(b.accent)) {
-          document.documentElement.style.setProperty("--accent", b.accent);
+          applyBrandPalette(b.accent);
           if (!hasDraft) { $("accent").value = b.accent; $("accentText").value = b.accent; }
         }
         // only seed brand defaults when there's no saved draft to restore
@@ -949,9 +1753,27 @@
       // snapshots of settings taken BEFORE each prompt-box change, for undo
       let refineHistory = [];
 
+      const isPostMode = () => currentMode === "post";
+
       function buildMeta() {
+        // In Post mode we don't have a reel composition — the only context the
+        // captioning AI needs is the per-photo text overlays the user typed in,
+        // plus the optional post-level context from the edit page.
+        if (isPostMode()) {
+          const captions = postMedia.map((m) => m.caption || "");
+          const ctx = ($("postContext")?.value || "").trim() || $("reelContext")?.value || ("Photo post — " + postMedia.length + (postMedia.length === 1 ? " image" : " images"));
+          return {
+            mode: "post",
+            reelContext: ctx,
+            captions,
+            title: "", subtitle: "", kicker: "", ctaHeadline: "", ctaSub: "",
+            website: $("website")?.value || "", handle: $("handle")?.value || "",
+            accent: $("accentText")?.value || "", perPhotoSeconds: 3,
+          };
+        }
         return {
-          format: $("format").value,
+          format: $("format").value, // server uses this only to pick the default preview format on step 4
+          template: ($("template") && $("template").value) || "signature",
           kicker: $("kicker").value,
           title: $("title").value,
           subtitle: $("subtitle").value,
@@ -972,10 +1794,11 @@
         };
       }
 
-      // apply settings returned by /refine back into the form + knobs
+      // apply settings returned by /refine back into the form + knobs.
+      // Note: format is no longer touched by the AI (we render all 3 aspect ratios).
       function applySettings(s) {
         const set = (id, v) => { if (v !== undefined && v !== null && $(id)) $(id).value = v; };
-        set("format", s.format); set("kicker", s.kicker); set("title", s.title);
+        set("template", s.template); set("kicker", s.kicker); set("title", s.title);
         set("subtitle", s.subtitle); set("ctaHeadline", s.ctaHeadline); set("ctaSub", s.ctaSub);
         set("website", s.website); set("handle", s.handle);
         if (s.accent) { $("accent").value = s.accent; $("accentText").value = s.accent; }
@@ -995,9 +1818,7 @@
         flat.forEach((p) => fd.append("photos", p.file, p.file.name)); // flattened in slide order
         fd.append("meta", JSON.stringify(meta));
         const status = $("status");
-        status.innerHTML =
-          '<div class="statusrow"><span id="stxt">Starting…</span><span id="spct">0%</span></div>' +
-          '<div class="bar"><div id="sbar"></div></div>';
+        status.innerHTML = renderStatusBlock("Starting…");
         try {
           const r = await fetch("/render", { method: "POST", body: fd });
           const j = await r.json();
@@ -1016,6 +1837,9 @@
         doRender(buildMeta());
       };
 
+      // Most recent /progress payload — step 4 reads `format` from it to set
+      // the preview's aspect ratio without having to refetch.
+      let lastProgress = null;
       function poll(jobId) {
         const iv = setInterval(async () => {
           const r = await fetch("/progress/" + jobId);
@@ -1026,6 +1850,7 @@
             resetBtn();
             return;
           }
+          lastProgress = j;
           const pct = Math.round((j.progress || 0) * 100);
           if ($("sbar")) $("sbar").style.width = pct + "%";
           if ($("spct")) $("spct").textContent = pct + "%";
@@ -1042,7 +1867,7 @@
           '<a class="dl" href="/download/' + jobId + '" download>↓ Download MP4</a>' +
           '<div class="refine">' +
           '<label>Want changes? Just tell me ✨</label>' +
-          '<textarea id="refineBox" rows="2" placeholder="e.g. make the captions a bit smaller, slow it down, use a warmer colour, drop the grain, reword caption 3 to \'shipping real AI\'"></textarea>' +
+          '<textarea id="refineBox" rows="2" placeholder="e.g. switch to editorial style, make the captions smaller, drop the grain, reword caption 3 to \'shipping real AI\'"></textarea>' +
           '<button class="btn ghost" id="refineBtn" type="button">Apply changes &amp; re-render</button>' +
           (refineHistory.length
             ? '<button class="btn ghost" id="undoBtn" type="button">↩ Undo last change (' + refineHistory.length + ")</button>"
@@ -1060,57 +1885,110 @@
       // Per-platform local state — caption/hashtags edits persist when switching tabs.
       const pState = { instagram: { caption: "", hashtags: [] }, linkedin: { caption: "", hashtags: [] }, facebook: { caption: "", hashtags: [] } };
       const pAccount = { instagram: null, linkedin: null, facebook: null };
+      // Which platforms are ticked for posting. The "active" tab is just what's
+      // currently being edited; pSelected is what actually gets posted.
+      const pSelected = { instagram: true, linkedin: true, facebook: true };
       let pActive = "instagram";
       const PLATFORM_LABEL = { instagram: "Instagram", linkedin: "LinkedIn", facebook: "Facebook" };
 
-      // True once accounts + drafts are loaded for the current jobId (so we don't refetch when re-entering page 4).
+      // Cache key for "we've loaded accounts + drafts for this work" — different
+      // signature for the two modes so re-entering doesn't accidentally reuse.
       let pLoadedForJob = null;
+      const postSourceKey = () => isPostMode()
+        ? "post:" + postMedia.map((m) => m.id).join(",")
+        : "reel:" + (currentJobId || "");
       async function enterPostPage() {
-        // Need a finished render first
-        if (!currentJobId) {
+        // Repaint the back button + carousel toggle for the current mode.
+        const backR = $("backTo3"), backP = $("backToPostEdit"), carouselSec = $("postCarouselSection");
+        if (backR) backR.hidden = isPostMode();
+        if (backP) backP.hidden = !isPostMode();
+        if (backP && !backP.dataset.wired) { backP.dataset.wired = "1"; backP.onclick = () => goTo("pagePostEdit"); }
+        if (carouselSec) carouselSec.hidden = !(isPostMode() && postMedia.length > 1);
+
+        // Gate based on mode.
+        if (isPostMode()) {
+          const ready = postMedia.length && postMedia.every((m) => m.preparedUrl);
+          if (!ready) {
+            $("postPreview").innerHTML = '<div class="err" style="padding:20px;text-align:center">Add and process some photos first — head back and click Continue.</div>';
+            $("postSubmit").disabled = true; $("postSubmit").textContent = "✓ Prepare media first";
+            return;
+          }
+        } else if (!currentJobId) {
           $("postPreview").innerHTML = '<div class="err" style="padding:20px;text-align:center">Render a reel first — then come back to post.</div>';
           $("postSubmit").disabled = true; $("postSubmit").textContent = "✓ Render a reel first";
           return;
         }
+
         // wire interactions (idempotent — safe to re-run)
-        document.querySelectorAll(".platcard").forEach((el) => { el.onclick = () => switchPlatform(el.dataset.platform); });
+        document.querySelectorAll(".platcard").forEach((el) => {
+          // Card body → switch the active editing tab. Checkbox → toggle whether we post there.
+          el.onclick = (ev) => {
+            const pick = ev.target.closest(".platpick");
+            if (pick) { ev.stopPropagation(); togglePlatform(pick.dataset.pick); return; }
+            switchPlatform(el.dataset.platform);
+          };
+        });
         $("postSchedule").onchange = (e) => { $("postWhen").hidden = e.target.value !== "schedule"; };
         $("postSubmit").onclick = submitPost;
         $("postCaption").oninput = (e) => { pState[pActive].caption = e.target.value; renderPreview(); };
         $("postHashtags").oninput = (e) => { pState[pActive].hashtags = (e.target.value || "").trim().split(/\s+/).filter(Boolean); renderPreview(); };
         $("postRefineBtn").onclick = refineCaption;
 
-        if (pLoadedForJob === currentJobId) { switchPlatform(pActive); return; }
+        if (pLoadedForJob === postSourceKey()) { switchPlatform(pActive); return; }
         $("postPreview").innerHTML = '<span class="hint">Loading preview + AI caption…</span>';
-        try {
-          const [accountsRes, draftRes] = await Promise.all([
-            fetch("/post/accounts").then((r) => r.json()),
-            fetch("/post/draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildMeta()) }).then((r) => r.json()),
-          ]);
-          if (accountsRes.error) throw new Error(accountsRes.error);
-          if (draftRes.error) throw new Error(draftRes.error);
+
+        // Settle both calls INDEPENDENTLY — if Blotato is down (401) we still
+        // want the AI captions to come through, and vice versa.
+        const [accountsSettled, draftSettled] = await Promise.allSettled([
+          fetch("/post/accounts").then((r) => r.json()),
+          fetch("/post/draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildMeta()) }).then((r) => r.json()),
+        ]);
+
+        // --- captions (handle independently so a Blotato outage doesn't block these) ---
+        const draftRes = draftSettled.status === "fulfilled" ? draftSettled.value : null;
+        if (draftRes && !draftRes.error) {
           for (const p of ["instagram", "linkedin", "facebook"]) {
             const d = draftRes[p] || { caption: "", hashtags: [] };
             pState[p] = { caption: d.caption || "", hashtags: d.hashtags || [] };
           }
+        } else {
+          const err = (draftRes && draftRes.error) || (draftSettled.status === "rejected" ? String(draftSettled.reason?.message || draftSettled.reason) : "Caption AI failed");
+          for (const p of ["instagram", "linkedin", "facebook"]) {
+            pState[p] = { caption: "", hashtags: [] };
+          }
+          $("postResult").innerHTML = '<span class="bad">Caption AI: ' + err + '</span>';
+        }
+
+        // --- accounts (handle independently) ---
+        const accountsRes = accountsSettled.status === "fulfilled" ? accountsSettled.value : null;
+        const accountsOk = accountsRes && !accountsRes.error;
+        if (accountsOk) {
           for (const a of (accountsRes.accounts || [])) {
             pAccount[a.platform] = { id: a.id, platform: a.platform, username: a.username || a.fullname || "", pageId: a.pages && a.pages[0] ? a.pages[0].id : null, pageName: a.pages && a.pages[0] ? (a.pages[0].name || a.pages[0].title || a.pages[0].username || "") : "" };
           }
-          // update the subline on each platform card with the connected account
-          for (const plat of ["instagram", "linkedin", "facebook"]) {
-            const acc = pAccount[plat];
-            const subId = "platsub" + plat[0].toUpperCase() + plat.slice(1);
-            const el = $(subId);
-            if (el) el.textContent = acc
-              ? (acc.pageName ? acc.pageName : (acc.username || "@" + acc.id))
-              : "— no account connected —";
-          }
-          pLoadedForJob = currentJobId;
-          switchPlatform("instagram");
-        } catch (e) {
-          $("postResult").innerHTML = '<span class="bad">' + e.message + "</span>";
-          $("postPreview").innerHTML = '<span class="err">Could not load: ' + e.message + '</span>';
+        } else {
+          const err = (accountsRes && accountsRes.error) || (accountsSettled.status === "rejected" ? String(accountsSettled.reason?.message || accountsSettled.reason) : "Accounts fetch failed");
+          // Append, don't overwrite, so caption error stays visible too.
+          $("postResult").innerHTML = ($("postResult").innerHTML || "") + '<div class="bad">Accounts: ' + err + " (you can still review captions / preview — posting is disabled until Blotato auth is restored)</div>";
         }
+        for (const plat of ["instagram", "linkedin", "facebook"]) {
+          const acc = pAccount[plat];
+          const subId = "platsub" + plat[0].toUpperCase() + plat.slice(1);
+          const el = $(subId);
+          if (el) el.textContent = acc
+            ? (acc.pageName ? acc.pageName : (acc.username || "@" + acc.id))
+            : (accountsOk ? "— no account connected —" : "— accounts unavailable —");
+          if (!acc) {
+            pSelected[plat] = false;
+            const card = document.querySelector(`.platcard[data-platform="${plat}"]`);
+            const pick = document.querySelector(`.platpick[data-pick="${plat}"]`);
+            if (card) card.classList.remove("selected");
+            if (pick) { pick.classList.remove("on"); pick.setAttribute("aria-checked", "false"); pick.style.opacity = "0.35"; pick.style.cursor = "not-allowed"; }
+          }
+        }
+
+        pLoadedForJob = postSourceKey();
+        switchPlatform("instagram");
       }
 
       function switchPlatform(p) {
@@ -1118,11 +1996,30 @@
         document.querySelectorAll(".platcard").forEach((el) => el.classList.toggle("active", el.dataset.platform === p));
         $("postCaption").value = pState[p].caption || "";
         $("postHashtags").value = (pState[p].hashtags || []).join(" ");
-        const acc = pAccount[p];
         const activeName = $("activePlatformName"); if (activeName) activeName.textContent = PLATFORM_LABEL[p];
-        $("postSubmit").textContent = `✓ Approve & post to ${PLATFORM_LABEL[p]}`;
-        $("postSubmit").disabled = !acc;
         renderPreview();
+        updateSubmitButton();
+      }
+
+      // Tick / untick a platform for posting. Doesn't change the active editing tab.
+      function togglePlatform(p) {
+        if (!pAccount[p]) return; // no connected account → can't post there
+        pSelected[p] = !pSelected[p];
+        const card = document.querySelector(`.platcard[data-platform="${p}"]`);
+        const pick = document.querySelector(`.platpick[data-pick="${p}"]`);
+        if (card) card.classList.toggle("selected", pSelected[p]);
+        if (pick) { pick.classList.toggle("on", pSelected[p]); pick.setAttribute("aria-checked", String(pSelected[p])); }
+        updateSubmitButton();
+      }
+
+      // Reflect the current selection in the big green submit button.
+      function updateSubmitButton() {
+        const picks = ["instagram", "linkedin", "facebook"].filter((p) => pSelected[p] && pAccount[p]);
+        const btn = $("postSubmit");
+        if (!picks.length) { btn.textContent = "✓ Tick at least one platform"; btn.disabled = true; return; }
+        if (picks.length === 1) { btn.textContent = `✓ Approve & post to ${PLATFORM_LABEL[picks[0]]}`; }
+        else { btn.textContent = `✓ Approve & post to ${picks.length} platforms`; }
+        btn.disabled = false;
       }
 
       function escapeHtml(s) { return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
@@ -1134,13 +2031,42 @@
         const brandName = escapeHtml(BRAND_INFO.name);
         const initial = escapeHtml((BRAND_INFO.wordmark || BRAND_INFO.name || "B").slice(0, 1).toUpperCase());
         const handle = escapeHtml((BRAND_INFO.handle || "").replace(/^@/, "") || brandName.toLowerCase().replace(/\s+/g, ""));
-        const videoSrc = currentJobId ? `/download/${currentJobId}?inline=1` : "";
-        const video = videoSrc ? `<video autoplay muted loop playsinline preload="metadata" src="${videoSrc}"></video>` : "";
+        // Decide what goes inside the .vidwrap container.
+        // POST mode: a swipeable carousel of the prepared photos with arrows,
+        //            counter, clickable dots, plus trackpad-swipe + keyboard nav.
+        // REEL mode: the rendered video, with the .vidwrap aspect-ratio class matching the render.
+        let video, vidwrapClass;
+        if (isPostMode()) {
+          // Aspect class follows the prepare aspect so the chrome matches the
+          // exact dimensions the user picked — contain so nothing crops further.
+          const aspect = $("postAspect")?.value || "square";
+          const fmtClass = aspect === "story" ? "fmt-reels" : aspect === "portrait" ? "fmt-square" : aspect === "landscape" ? "fmt-landscape" : "fmt-square";
+          vidwrapClass = `vidwrap fmt-${fmtClass.replace(/^fmt-/, "")}`;
+          const slides = postMedia.map((m, i) =>
+            `<img src="${m.preparedUrl || m.url}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;opacity:${i === 0 ? 1 : 0};transition:opacity 0.25s;" data-pcarousel="${i}" />`
+          ).join("");
+          const counter = postMedia.length > 1
+            ? `<div style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;letter-spacing:0.04em;backdrop-filter:blur(4px);" data-pcarouselcounter>1 / ${postMedia.length}</div>`
+            : "";
+          const arrows = postMedia.length > 1 ? `
+            <button type="button" data-pcarouselprev style="position:absolute;left:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,0.55);color:#fff;font-size:18px;cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(4px);">‹</button>
+            <button type="button" data-pcarouselnext style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,0.55);color:#fff;font-size:18px;cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(4px);">›</button>
+          ` : "";
+          const dots = postMedia.length > 1
+            ? `<div style="position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:6px;">${postMedia.map((_, i) => `<button type="button" data-pcarouseldot="${i}" style="width:9px;height:9px;border-radius:50%;border:none;padding:0;background:${i === 0 ? '#fff' : 'rgba(255,255,255,0.5)'};cursor:pointer;transition:0.2s;"></button>`).join("")}</div>`
+            : "";
+          video = slides + counter + arrows + dots;
+        } else {
+          const fmt = (lastProgress && lastProgress.format) || ($("format") && $("format").value) || "reels";
+          vidwrapClass = `vidwrap fmt-${fmt}`;
+          const videoSrc = currentJobId ? `/download/${currentJobId}?inline=1` : "";
+          video = videoSrc ? `<video autoplay muted loop playsinline preload="metadata" src="${videoSrc}"></video>` : "";
+        }
         let html = "";
         if (p === "instagram") {
           html = `<div class="preview ig">
             <div class="hdr"><div class="avatar"><div>${initial}</div></div><div class="uname">${handle}</div><div class="more">⋯</div></div>
-            <div class="vidwrap">${video}</div>
+            <div class="${vidwrapClass}">${video}</div>
             <div class="actions"><span>♡</span><span>💬</span><span>↗</span><span class="save">🔖</span></div>
             <div class="body"><span class="un">${handle}</span>${escapeHtml(cap)}${tags ? "\n\n" + '<span class="tags">' + escapeHtml(tags) + "</span>" : ""}</div>
           </div>`;
@@ -1148,18 +2074,65 @@
           html = `<div class="preview li">
             <div class="hdr"><div class="avatar">${initial}</div><div class="who"><div class="name">${brandName}</div><div class="meta">${escapeHtml(BRAND_INFO.name)} • Now</div></div></div>
             <div class="body">${escapeHtml(cap)}${tags ? '\n\n<span class="tags">' + escapeHtml(tags) + "</span>" : ""}</div>
-            <div class="vidwrap">${video}</div>
+            <div class="${vidwrapClass}">${video}</div>
             <div class="actions"><span>👍 Like</span><span>💬 Comment</span><span>🔁 Repost</span><span>↗ Send</span></div>
           </div>`;
         } else {
           html = `<div class="preview fb">
             <div class="hdr"><div class="avatar">${initial}</div><div class="who"><div class="name">${brandName}</div><div class="meta">Just now · 🌐</div></div></div>
             <div class="body">${escapeHtml(cap)}${tags ? '\n\n<span class="tags">' + escapeHtml(tags) + "</span>" : ""}</div>
-            <div class="vidwrap">${video}</div>
+            <div class="${vidwrapClass}">${video}</div>
             <div class="actions"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
           </div>`;
         }
         $("postPreview").innerHTML = html;
+        // Carousel interaction (post mode only).
+        if (isPostMode() && postMedia.length > 1) {
+          const root = $("postPreview");
+          const slides = root.querySelectorAll("[data-pcarousel]");
+          const dots = root.querySelectorAll("[data-pcarouseldot]");
+          const counter = root.querySelector("[data-pcarouselcounter]");
+          let idx = 0;
+          const total = postMedia.length;
+          const go = (i) => {
+            idx = ((i % total) + total) % total; // wrap both ways
+            slides.forEach((s) => s.style.opacity = Number(s.dataset.pcarousel) === idx ? 1 : 0);
+            dots.forEach((d, di) => d.style.background = di === idx ? "#fff" : "rgba(255,255,255,0.5)");
+            if (counter) counter.textContent = (idx + 1) + " / " + total;
+          };
+          dots.forEach((dot) => { dot.onclick = () => go(Number(dot.dataset.pcarouseldot)); });
+          const prev = root.querySelector("[data-pcarouselprev]");
+          const next = root.querySelector("[data-pcarouselnext]");
+          if (prev) prev.onclick = () => go(idx - 1);
+          if (next) next.onclick = () => go(idx + 1);
+          // Trackpad / mouse wheel — horizontal swipe shifts slides. Throttle so
+          // a single swipe doesn't skip multiple frames at once.
+          let wheelLock = 0;
+          root.addEventListener("wheel", (e) => {
+            if (Math.abs(e.deltaX) < 12 || Math.abs(e.deltaX) < Math.abs(e.deltaY)) return;
+            e.preventDefault();
+            const now = Date.now();
+            if (now - wheelLock < 220) return;
+            wheelLock = now;
+            go(idx + (e.deltaX > 0 ? 1 : -1));
+          }, { passive: false });
+          // Touch swipe — basic left/right detection.
+          let tx = 0, ty = 0;
+          root.addEventListener("touchstart", (e) => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+          root.addEventListener("touchend", (e) => {
+            const dx = (e.changedTouches[0]?.clientX || tx) - tx;
+            const dy = (e.changedTouches[0]?.clientY || ty) - ty;
+            if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) go(idx + (dx < 0 ? 1 : -1));
+          }, { passive: true });
+          // Keyboard — only when the post page is the active one.
+          root._pcarouselKey && document.removeEventListener("keydown", root._pcarouselKey);
+          root._pcarouselKey = (e) => {
+            if (currentPage !== "page4" || !isPostMode()) return;
+            if (e.key === "ArrowLeft") { e.preventDefault(); go(idx - 1); }
+            else if (e.key === "ArrowRight") { e.preventDefault(); go(idx + 1); }
+          };
+          document.addEventListener("keydown", root._pcarouselKey);
+        }
       }
 
       // turn the datetime-local value into ISO 8601 with the browser's local offset
@@ -1175,28 +2148,41 @@
 
       async function submitPost() {
         const sub = $("postSubmit");
-        const p = pActive;
-        const acc = pAccount[p];
-        if (!acc) return;
-        sub.disabled = true; sub.textContent = "Posting…";
+        // Snapshot the active textareas into state first (last keystroke might not have fired oninput yet).
+        pState[pActive].caption = ($("postCaption").value || "").trim();
+        pState[pActive].hashtags = ($("postHashtags").value || "").trim().split(/\s+/).filter(Boolean);
+
+        const picks = ["instagram", "linkedin", "facebook"].filter((p) => pSelected[p] && pAccount[p]);
+        if (!picks.length) return;
+        const originalLabel = sub.textContent;
+        sub.disabled = true; sub.textContent = picks.length > 1 ? `Posting to ${picks.length} platforms…` : "Posting…";
         $("postResult").textContent = "";
         try {
-          // snapshot the active textareas into state (in case last keystroke wasn't flushed)
-          pState[p].caption = ($("postCaption").value || "").trim();
-          pState[p].hashtags = ($("postHashtags").value || "").trim().split(/\s+/).filter(Boolean);
           let scheduledTime = null;
           if ($("postSchedule").value === "schedule") {
             const v = $("postWhen").value;
             if (!v) throw new Error("Pick a date and time to schedule.");
             scheduledTime = localToIso(v);
           }
-          const r = await fetch("/post", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-            jobId: currentJobId,
-            caption: pState[p].caption,
-            hashtags: pState[p].hashtags,
-            accounts: [{ id: acc.id, platform: acc.platform, pageId: acc.pageId }],
-            scheduledTime,
-          })});
+          // One request, multiple accounts — each carries its own caption/hashtags
+          // so each platform posts in its own voice. Body shape depends on mode:
+          //   REEL: { jobId, accounts, scheduledTime }
+          //   POST: { mediaUrls, posting, accounts, scheduledTime }
+          const accounts = picks.map((p) => {
+            const acc = pAccount[p];
+            return {
+              id: acc.id, platform: acc.platform, pageId: acc.pageId,
+              caption: pState[p].caption, hashtags: pState[p].hashtags,
+            };
+          });
+          const body = isPostMode()
+            ? {
+                mediaUrls: postMedia.map((m) => m.preparedUrl).filter(Boolean),
+                posting: ($("postCarousel")?.value || "carousel"),
+                accounts, scheduledTime,
+              }
+            : { jobId: currentJobId, accounts, scheduledTime };
+          const r = await fetch("/post", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)});
           const j = await r.json();
           if (!r.ok) throw new Error(j.error || "Post failed");
           const lines = (j.results || []).map((x) => x.ok
@@ -1206,7 +2192,8 @@
         } catch (e) {
           $("postResult").innerHTML = '<span class="bad">' + e.message + "</span>";
         } finally {
-          sub.disabled = false; sub.textContent = `Approve & post to ${PLATFORM_LABEL[p]}`;
+          sub.disabled = false; sub.textContent = originalLabel;
+          updateSubmitButton();
         }
       }
 

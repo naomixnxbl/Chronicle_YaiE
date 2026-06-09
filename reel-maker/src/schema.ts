@@ -19,11 +19,31 @@ export const FORMATS: Record<FormatKey, { width: number; height: number; label: 
   landscape: { width: 1920, height: 1080, label: "YouTube / Web (16:9)" },
 };
 
+// All visual styles share the same brand (wordmark, accent, palette) but pick a
+// different layout/animation language so posts don't all look identical.
+export type TemplateKey =
+  | "signature"   // the original vibrant Reels-energy look (current default)
+  | "polaroid"    // warm scrapbook with taped polaroids + handwritten captions
+  | "editorial"   // magazine: thin serif, generous margins, restrained motion
+  | "bold"        // text-first: huge stacked typography, photo as muted backdrop
+  | "documentary" // letterboxed cinematic with heavy grain + subtitle-style captions
+  | "mono";       // black & white photos with a single accent splash
+
+export const TEMPLATE_META: Record<TemplateKey, { label: string; hint: string }> = {
+  signature:   { label: "Signature",        hint: "The bold, energetic default — best for IG Reels" },
+  polaroid:    { label: "Polaroid Album",   hint: "Warm scrapbook with taped polaroids + handwritten captions" },
+  editorial:   { label: "Editorial",        hint: "Magazine-style serif typography — great for LinkedIn" },
+  bold:        { label: "Bold Typography",  hint: "Huge stacked type with photos in the back" },
+  documentary: { label: "Documentary",      hint: "Cinematic letterbox with film grain + subtitles" },
+  mono:        { label: "Minimal Mono",     hint: "Black & white with a single accent splash" },
+};
+
 // A slide shows one image, or two related images split with the caption between.
 export type Slide = { images: string[]; caption?: string };
 
 export type ReelProps = {
   format: FormatKey;
+  template: TemplateKey;
   slides: Slide[];
   kicker: string;
   title: string;
@@ -50,6 +70,7 @@ export type ReelProps = {
 
 export const defaultProps: ReelProps = {
   format: "reels",
+  template: "signature",
   slides: [
     { images: [staticFile("photos/1.jpeg")], caption: "3,400 strong, and growing" },
     { images: [staticFile("photos/2.webp")], caption: "Where curiosity meets code" },

@@ -28,6 +28,40 @@ const MODEL = process.env.OPENAI_MODEL || "gpt-4o"; // vision + structured outpu
 // up via /v2/users/me/accounts at request time.
 const BLOTATO_KEY = process.env.BLOTATO_API_KEY || null;
 const BLOTATO_BASE = "https://backend.blotato.com/v2";
+
+// Tavily — used to fetch a small pool of currently-trending hashtags before we
+// draft post captions. Optional: without TAVILY_API_KEY in .env the system
+// silently falls back to the AI's training-data hashtag suggestions.
+const TAVILY_KEY = process.env.TAVILY_API_KEY || null;
+const TRENDING_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours — trends don't move that fast
+let trendingCache = { at: 0, tags: null };
+async function fetchTrendingForBrand() {
+  if (!TAVILY_KEY) return null;
+  if (trendingCache.tags && (Date.now() - trendingCache.at) < TRENDING_TTL_MS) return trendingCache.tags;
+  // Query is brand-aware: ties trending tags to the audience this brand actually reaches.
+  const q = `trending hashtags Instagram LinkedIn for ${brand.name.toLowerCase()} — AI community, Western Sydney, tech meetups, AI for jobs`;
+  try {
+    const r = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TAVILY_KEY}` },
+      body: JSON.stringify({ query: q, max_results: 5, search_depth: "basic", include_answer: false }),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    // Tavily returns { results: [{ title, url, content }, ...] }. Extract hashtag-shaped
+    // tokens from the content blobs and dedupe.
+    const text = (j.results || []).map((res) => `${res.title || ""} ${res.content || ""}`).join(" ");
+    const tags = Array.from(new Set(text.match(/#[\p{L}\p{N}_]{3,40}/giu) || []))
+      .filter((t) => !/^#(the|and|for|with)/i.test(t))
+      .slice(0, 12);
+    if (!tags.length) return null;
+    trendingCache = { at: Date.now(), tags };
+    return tags;
+  } catch {
+    return null;
+  }
+}
+
 async function blotato(method, path, body) {
   if (!BLOTATO_KEY) throw new Error("Blotato key missing (BLOTATO_API_KEY in .env).");
   const r = await fetch(`${BLOTATO_BASE}${path}`, {
@@ -118,6 +152,187 @@ app.get("/api/brand", (req, res) => {
     tagline: brand.tagline ?? "",
     defaultCopy: brand.defaultCopy,
   });
+});
+
+// ---- Brand setup intake -----------------------------------------------------
+// Three easy ways to seed the brand voice without copy-pasting captions:
+//   • /api/brand/from-url   — paste a website URL, AI extracts voice + colour
+//   • /api/brand/from-doc   — drop a PDF/DOCX/TXT brand-book, AI distils it
+//   • /api/brand/logo       — drop a logo image, saved as the brand logo
+// All three write back to brand.config.json so the change persists across restarts.
+
+// Common: ask the AI to distill a chunk of text into brand fields.
+async function distillBrandFromText(rawText, sourceLabel) {
+  if (!openai) throw new Error("Caption AI needs OPENAI_API_KEY in reel-maker/.env.");
+  const text = String(rawText || "").slice(0, 20000); // cap input — gpt is fine with ~5k tokens
+  if (text.length < 80) throw new Error("Not enough text to learn from (got " + text.length + " chars).");
+  const sys = `You are extracting brand identity from a piece of source text (${sourceLabel}). Return a tight JSON object with:
+- name: the brand/organisation name
+- voice: 2-3 sentences capturing the brand's tone, values, themes, recurring phrases, who they serve, what they sound like — written for an AI that will draft social posts in this voice
+- accent: a hex colour that looks like the brand's primary colour (look for any explicit colour mentions, or infer from sector/personality)
+- defaultCopy: { kicker, title, subtitle, ctaHeadline, ctaSub, website, handle } — short defaults that match this brand. Leave empty string if you genuinely can't tell.
+Be specific. Quote phrases from the source. If the source is thin, say so in the voice field instead of inventing things.`;
+  const schema = {
+    type: "object", additionalProperties: false,
+    properties: {
+      name: { type: "string" },
+      voice: { type: "string" },
+      accent: { type: "string" },
+      defaultCopy: {
+        type: "object", additionalProperties: false,
+        properties: { kicker: { type: "string" }, title: { type: "string" }, subtitle: { type: "string" }, ctaHeadline: { type: "string" }, ctaSub: { type: "string" }, website: { type: "string" }, handle: { type: "string" } },
+        required: ["kicker", "title", "subtitle", "ctaHeadline", "ctaSub", "website", "handle"],
+      },
+    },
+    required: ["name", "voice", "accent", "defaultCopy"],
+  };
+  const r = await openai.chat.completions.create({
+    model: MODEL,
+    max_completion_tokens: 1200,
+    messages: [
+      { role: "system", content: sys },
+      { role: "user", content: `SOURCE (${sourceLabel}):\n\n${text}` },
+    ],
+    response_format: { type: "json_schema", json_schema: { name: "brand_distill", strict: true, schema } },
+  });
+  const m = r.choices?.[0]?.message;
+  if (m?.refusal) throw new Error(m.refusal);
+  return JSON.parse(m.content);
+}
+
+// Persist a partial brand update to brand.config.json safely (reads fresh from disk
+// to avoid clobbering anything edited while the server was running).
+function saveBrandPatch(patch) {
+  const cfgPath = path.join(__dirname, "brand.config.json");
+  const onDisk = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
+  const merged = { ...onDisk, ...patch };
+  // defaultCopy is nested — shallow-merge it so partial updates don't blow away unset fields
+  if (patch.defaultCopy) merged.defaultCopy = { ...(onDisk.defaultCopy || {}), ...patch.defaultCopy };
+  fs.writeFileSync(cfgPath, JSON.stringify(merged, null, 2) + "\n");
+  // Update in-memory brand so subsequent requests see the change without a restart.
+  Object.assign(brand, merged);
+}
+
+// 1) Paste a website URL — server fetches HTML, strips tags, AI distills voice.
+app.post("/api/brand/from-url", async (req, res) => {
+  try {
+    const { url } = req.body || {};
+    if (typeof url !== "string" || !/^https?:\/\//i.test(url)) return res.status(400).json({ error: "Provide a full URL starting with http(s)://" });
+    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 ReelMaker brand-intake" }, redirect: "follow" });
+    if (!r.ok) return res.status(400).json({ error: "Could not fetch URL: " + r.status });
+    const html = await r.text();
+    // Quick HTML → text: strip script/style, then tags, collapse whitespace.
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const distilled = await distillBrandFromText(text, "website " + url);
+    if (!distilled.defaultCopy.website) distilled.defaultCopy.website = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    saveBrandPatch(distilled);
+    res.json({ ok: true, applied: distilled });
+  } catch (err) {
+    console.error("from-url failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// 2) Drop a brand-book file — PDF, DOCX, or plain text. AI distills it.
+const docUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+app.post("/api/brand/from-doc", docUpload.single("doc"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded." });
+    const buf = req.file.buffer;
+    const name = (req.file.originalname || "").toLowerCase();
+    let text = "";
+    if (name.endsWith(".pdf") || req.file.mimetype === "application/pdf") {
+      // pdf-parse exports differently across versions — handle both default + named export.
+      const mod = await import("pdf-parse");
+      const pdfParse = mod.default || mod.pdf || mod;
+      const parsed = await pdfParse(buf);
+      text = parsed.text || "";
+    } else if (name.endsWith(".docx") || req.file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer: buf });
+      text = result.value || "";
+    } else if (name.endsWith(".txt") || name.endsWith(".md") || req.file.mimetype?.startsWith("text/")) {
+      text = buf.toString("utf8");
+    } else {
+      return res.status(400).json({ error: "Unsupported file type. Use PDF, DOCX, TXT, or MD." });
+    }
+    const distilled = await distillBrandFromText(text, "uploaded doc " + req.file.originalname);
+    saveBrandPatch(distilled);
+    res.json({ ok: true, applied: distilled, charsParsed: text.length });
+  } catch (err) {
+    console.error("from-doc failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// 3) Drop a logo image — saved into public/brand/ and wired into brand config.
+const logoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+app.post("/api/brand/logo", logoUpload.single("logo"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded." });
+    if (!req.file.mimetype?.startsWith("image/")) return res.status(400).json({ error: "File must be an image." });
+    const ext = (req.file.mimetype === "image/svg+xml") ? "svg"
+      : (req.file.mimetype === "image/png") ? "png"
+      : (req.file.mimetype === "image/webp") ? "webp" : "png";
+    const brandDir = path.join(PUBLIC_DIR, "brand");
+    fs.mkdirSync(brandDir, { recursive: true });
+    const outName = `${brand.id || "brand"}-logo.${ext}`;
+    const outPath = path.join(brandDir, outName);
+    if (ext === "svg") {
+      // Leave SVG as-is (vector — no rasterising).
+      fs.writeFileSync(outPath, req.file.buffer);
+    } else {
+      // Normalize raster logos: rotate (EXIF), resize to a reasonable max,
+      // re-encode as PNG to preserve transparency.
+      await sharp(req.file.buffer).rotate().resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true }).png({ compressionLevel: 9 }).toFile(outPath);
+    }
+    saveBrandPatch({ logoImage: `brand/${outName}`, useBuiltinMark: false });
+    res.json({ ok: true, logoImage: `brand/${outName}` });
+  } catch (err) {
+    console.error("logo upload failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// Voice examples — real WSTI posts that the AI uses as canonical samples for
+// each platform's tone. Persisted back into brand.config.json so the Brand
+// Voice page can edit them without a code change.
+app.get("/api/voice-examples", (req, res) => {
+  res.json({
+    instagram: Array.isArray(brand.voiceExamples?.instagram) ? brand.voiceExamples.instagram : [],
+    linkedin: Array.isArray(brand.voiceExamples?.linkedin) ? brand.voiceExamples.linkedin : [],
+    facebook: Array.isArray(brand.voiceExamples?.facebook) ? brand.voiceExamples.facebook : [],
+  });
+});
+app.post("/api/voice-examples", (req, res) => {
+  try {
+    const body = req.body || {};
+    const clean = (arr) => (Array.isArray(arr) ? arr : [])
+      .map((s) => String(s || "").trim())
+      .filter((s) => s.length > 0 && !/^PASTE/i.test(s));
+    const next = {
+      instagram: clean(body.instagram),
+      linkedin: clean(body.linkedin),
+      facebook: clean(body.facebook),
+    };
+    // Read fresh from disk so we don't accidentally overwrite other edits made
+    // to brand.config.json while the server was running.
+    const cfgPath = path.join(__dirname, "brand.config.json");
+    const onDisk = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
+    onDisk.voiceExamples = next;
+    fs.writeFileSync(cfgPath, JSON.stringify(onDisk, null, 2) + "\n");
+    // Update in-memory brand so subsequent /post/draft calls see the change without a restart.
+    brand.voiceExamples = next;
+    res.json({ ok: true, counts: { instagram: next.instagram.length, linkedin: next.linkedin.length, facebook: next.facebook.length } });
+  } catch (err) {
+    console.error("Voice examples save failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
 });
 
 // List background music tracks the user has dropped into public/music/
@@ -299,12 +514,15 @@ app.post("/story", memUpload.array("photos", 20), async (req, res) => {
 });
 
 // ---- refine: turn a natural-language tweak into adjusted settings ----
+// Note: we no longer let the AI change `format` because every render produces
+// all three aspect ratios — the user picks per-platform on step 4 instead.
+// `template` swaps the visual style (slot architecture in src/templates/).
 const REFINE_SYSTEM = `You adjust the settings for a ${brand.name} promo reel based on a short instruction from the user.
 
 You are given the CURRENT settings as JSON and the user's instruction. Return the COMPLETE updated settings (same shape), changing ONLY what the instruction implies and keeping everything else byte-identical.
 
 Field guide:
-- format: "reels" (9:16) | "square" (1:1) | "landscape" (16:9)
+- template: "signature" (bold/energetic default) | "polaroid" (scrapbook with handwritten captions) | "editorial" (magazine serif, LinkedIn-friendly) | "bold" (huge typography, photo as backdrop) | "documentary" (letterbox, heavy grain, subtitles) | "mono" (B&W with accent splash)
 - perPhotoSeconds: 1.5-6 (higher = slower pace)
 - accent: hex colour (the brand default is ${brand.accent})
 - music: must be one of the available track filenames, or null for none
@@ -320,7 +538,7 @@ const REFINE_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    format: { type: "string", enum: ["reels", "square", "landscape"] },
+    template: { type: "string", enum: ["signature", "polaroid", "editorial", "bold", "documentary", "mono"] },
     perPhotoSeconds: { type: "number" },
     accent: { type: "string" },
     music: { type: ["string", "null"] },
@@ -340,7 +558,7 @@ const REFINE_SCHEMA = {
     _note: { type: "string" },
   },
   required: [
-    "format", "perPhotoSeconds", "accent", "music", "title", "subtitle", "kicker",
+    "template", "perPhotoSeconds", "accent", "music", "title", "subtitle", "kicker",
     "ctaHeadline", "ctaSub", "website", "handle", "captions", "captionScale",
     "grain", "grade", "lightLeak", "particles", "_note",
   ],
@@ -353,6 +571,11 @@ app.post("/refine", async (req, res) => {
     if (!instruction || !current) return res.status(400).json({ error: "Missing instruction or current settings." });
     const tracks = fs.readdirSync(MUSIC_DIR).filter((f) => /\.(mp3|m4a|aac|wav|ogg)$/i.test(f));
 
+    // Old drafts may not carry `template` yet — default it so strict-schema validation passes.
+    const normalized = { ...current, template: current?.template || "signature" };
+    // Don't send the deprecated `format` field — the AI shouldn't see it (and the schema doesn't accept it).
+    delete normalized.format;
+
     const response = await openai.chat.completions.create({
       model: MODEL,
       max_completion_tokens: 1500,
@@ -362,7 +585,7 @@ app.post("/refine", async (req, res) => {
           role: "user",
           content:
             `Available music tracks: ${JSON.stringify(tracks)} (or null).\n\n` +
-            `CURRENT settings:\n${JSON.stringify(current, null, 2)}\n\n` +
+            `CURRENT settings:\n${JSON.stringify(normalized, null, 2)}\n\n` +
             `Instruction: ${instruction}`,
         },
       ],
@@ -423,27 +646,77 @@ const DRAFT_SCHEMA = {
   properties: { instagram: PLATFORM_DRAFT, linkedin: PLATFORM_DRAFT, facebook: PLATFORM_DRAFT },
   required: ["instagram", "linkedin", "facebook"],
 };
+// Read voiceExamples from brand.config and filter out placeholder strings so
+// half-edited configs don't accidentally feed "PASTE HERE" to the AI as real voice.
+function realExamples(platform) {
+  const ex = brand.voiceExamples?.[platform];
+  if (!Array.isArray(ex)) return [];
+  return ex.filter((s) => typeof s === "string" && s.trim() && !/^PASTE/i.test(s.trim()));
+}
+
+// Build a block of real WSTI posts to show the model as canonical voice samples.
+// When the brand config has them, these are the strongest signal in the prompt —
+// stronger than the abstract VOICE description.
+function voiceBlock(platform) {
+  const ex = realExamples(platform);
+  if (!ex.length) return ""; // gracefully fall back to platform conventions if none provided
+  const list = ex.map((s, i) => `--- ${platform.toUpperCase()} EXAMPLE ${i + 1} ---\n${s}`).join("\n\n");
+  return (
+    `\n\nCANONICAL ${platform.toUpperCase()} VOICE — these are REAL ${brand.name} posts. Match this tone, sentence rhythm, emoji habits, hashtag style, and signoff patterns. They beat any abstract rule below if there's a conflict:\n\n${list}\n`
+  );
+}
+
 app.post("/post/draft", async (req, res) => {
   try {
     if (!openai) return res.status(400).json({ error: "Caption AI needs OPENAI_API_KEY in reel-maker/.env." });
     const meta = req.body || {};
     const reelContext = meta.reelContext || "";
     const slideCaptions = Array.isArray(meta.captions) ? meta.captions : [];
+
+    // Live trending hashtag pool from Tavily (best-effort — silently skipped if no key).
+    const trending = await fetchTrendingForBrand().catch(() => null);
+    const trendingBlock = trending
+      ? `\n\nCURRENT TRENDING HASHTAGS (use these where they fit the post — DO NOT force unrelated ones):\n${trending.map((t) => `- ${t}`).join("\n")}\n`
+      : "";
+
     const sys =
-      `You write social-media post copy for ${brand.name} — one draft per platform (Instagram, LinkedIn, Facebook).\n\n` +
-      `BRAND & VOICE: ${brand.voice}\n\n` +
-      `Each platform has a distinct voice — match it. Captions MUST be visually structured (multiple lines / paragraphs) so they're scroll-friendly. Use REAL LINE BREAKS (\\n) inside the caption text — don't write one long wall of prose.\n\n` +
-      `INSTAGRAM — vibey, lowercase-leaning, human, ENERGETIC and full of feeling. Use 3–5 emojis strategically to add emotion + visual rhythm (one near the hook, one mid-body, one at the CTA — not clumped). Structure exactly like this (with blank lines between):\n\n` +
-      `<HOOK — one short, scroll-stopping line, often a question or a punchy declaration> [emoji]\n\n<BODY — 1–2 short sentences on what's actually happening, vivid and specific, name names/places/numbers where fitting> [emoji]\n\n<CTA — one warm invitation> [emoji]\n\nHashtags: 10, all lowercase, leading "#". Mix: 2 brand/community + 4 broad-reach + 4 niche/topical. Returned in the hashtags array, not inside the caption.\n\n` +
-      `LINKEDIN — professional, sentence-case, formal-but-warm. STRUCTURED with line breaks between paragraphs. Modern LinkedIn welcomes ONE strategic emoji at the start or in the CTA line (👏 🚀 💡 🤝 ✨ are normal). Structure:\n\n` +
-      `<HOOK — one sentence framing the moment or insight>\n\n<BODY — 2–3 sentences with the substance: what happened, who was there, what it meant>\n\n<CTA — a thoughtful invitation: a question, a "join us" line, an event nudge>\n\nHashtags: 3–5, CamelCase (#WesternSydneyTech, #AICommunity). In the hashtags array.\n\n` +
-      `FACEBOOK — conversational, warm and personal, like talking to a community group. Structured with line breaks. 2–3 strategic emojis for warmth. Structure:\n\n` +
-      `<HOOK — one friendly opener> [emoji]\n\n<BODY — 1–2 sentences, the story in plain warm language>\n\n<CTA — friendly invitation, often a question> [emoji]\n\nHashtags: 3–5, lowercase. In the hashtags array.\n\n` +
+      `You write social-media post copy for ${brand.name} — one draft per platform (Instagram, LinkedIn, Facebook). Your job is to maximize reach (algorithmic visibility) while sounding like a real human from this community.\n\n` +
+      `BRAND & VOICE: ${brand.voice}\n` +
+      voiceBlock("instagram") + voiceBlock("linkedin") + voiceBlock("facebook") +
+      trendingBlock +
+      `\n=== ALGORITHMIC REACH PLAYBOOK (apply per platform) ===\n\n` +
+      `INSTAGRAM — algorithm rewards: scroll-stop in first 3 words, dwell time (caption depth), and SAVES.\n` +
+      `- Voice: vibey, lowercase-leaning, energetic. 3–5 strategic emojis (one near hook, one mid-body, one near CTA — never clumped).\n` +
+      `- Structure (REAL line breaks between paragraphs):\n` +
+      `  • HOOK (1 line, 3–8 words): a question, a bold claim, or a punchy fact. The first 3 words must stop the thumb.\n` +
+      `  • BODY (2–4 short paragraphs): tell the story. Name people, places, numbers. ONE save-bait moment — a quotable line or a "screenshot this" insight people want to keep.\n` +
+      `  • CTA (1 line): warm invitation — "save this", "tag someone who'd love this", "drop a 💚 if you've been to one".\n` +
+      `- Hashtag strategy (return EXACTLY 10–15 in the hashtags array, ALL lowercase, with leading #):\n` +
+      `  • 2 brand/community tags (e.g. #wsti, #westernsydneytechinnovators)\n` +
+      `  • 3 niche/topical mid-volume tags (e.g. #parramattatech, #aimeetup) — high relevance, less competition\n` +
+      `  • 3 broad-reach high-volume tags (e.g. #ai, #techcommunity)\n` +
+      `  • 2 community/location tags (e.g. #westernsydney, #sydneystartups)\n` +
+      `  • If trending hashtags above fit naturally, weave 1–2 in as REPLACEMENTS, not additions.\n\n` +
+      `LINKEDIN — algorithm rewards: dwell time (caption length), saves, and meaningful comments.\n` +
+      `- Voice: professional, sentence-case, formal-but-warm. ONE strategic emoji at hook or CTA (✨ 🚀 👏 💡 🤝).\n` +
+      `- LENGTH MATTERS: aim for 900–1,400 characters total. Captions over ~210 chars trigger the "…see more" expansion — the click is a strong dwell-time signal. Hit "see more" via a strong hook that demands the click.\n` +
+      `- Structure (line breaks every 1–2 sentences for scannability — LinkedIn rewards short paragraphs):\n` +
+      `  • HOOK (1 line): a contrarian observation, a number, or a "here's what we learned" line that makes the reader expand.\n` +
+      `  • BODY (3–5 short paragraphs): the substance — what happened, who, what it means for the industry/region/jobs.\n` +
+      `  • CTA: end with a REAL question that invites comment ("what's working for your team?"), or a "tag your team" line.\n` +
+      `- Hashtags: 3–5, CamelCase, in the hashtags array. Mix brand + industry + region (#WesternSydneyTech, #AICommunity, #FutureOfWork).\n\n` +
+      `FACEBOOK — algorithm rewards: meaningful conversations (reactions + comments), shares, and dwell time.\n` +
+      `- Voice: conversational, warm, like talking to a community group. 2–3 emojis for warmth.\n` +
+      `- Structure: HOOK (warm opener with light emoji) → BODY (the story in plain warm language, name people, name the place) → CTA (a friendly question OR "tag a friend who'd love this").\n` +
+      `- Questions outperform statements on FB — make the CTA a question whenever it fits.\n` +
+      `- Hashtags: 3–5, lowercase, in the hashtags array.\n\n` +
       `RULES FOR ALL:\n` +
       `- Caption MUST contain literal line breaks (\\n\\n between paragraphs). Never one solid block.\n` +
       `- No quotation marks around the whole caption. No "link in bio" filler.\n` +
-      `- Reflect the actual reel content, not generic copy. Name the event, the place (Western Sydney / Parramatta), the people if relevant.\n` +
-      `- Emojis must feel intentional, not decorative spam — but DO use them; flat emoji-less captions feel corporate and dead.`;
+      `- Reflect the actual reel content. Name the event, the place (Western Sydney / Parramatta), the people if relevant — specificity drives engagement.\n` +
+      `- Emojis must feel intentional, not decorative spam — but DO use them; flat emoji-less captions feel corporate and dead.\n` +
+      `- DO NOT copy lines verbatim from the canonical voice examples — match the TONE/RHYTHM/STYLE, write fresh content about THIS reel.\n` +
+      `- DO NOT invent details that aren't in the reel context or on-screen captions. If a fact isn't given, infer cautiously or leave it out.`;
     const user =
       `Reel goal / context: ${reelContext || "(none — infer from the on-screen captions)"}\n` +
       `Title: ${meta.title || ""}\nSubtitle: ${meta.subtitle || ""}\n` +
@@ -482,10 +755,12 @@ app.post("/post/refine", async (req, res) => {
     })[platform] || "on-brand";
     const sys =
       `You revise a SINGLE social media post for ${brand.name} on ${platform}.\n\n` +
-      `BRAND & VOICE: ${brand.voice}\n\n` +
-      `PLATFORM CONVENTIONS: ${platformVoice}\n\n` +
+      `BRAND & VOICE: ${brand.voice}\n` +
+      voiceBlock(platform) +
+      `\nPLATFORM CONVENTIONS: ${platformVoice}\n\n` +
       `Apply the user's instruction. Keep what they didn't ask to change. Return the FULL revised caption + hashtags — not a diff.\n` +
-      `IMPORTANT: If the instruction doesn't mention hashtags, return the CURRENT hashtags EXACTLY as provided (don't regenerate them). Only the caption changes.`;
+      `IMPORTANT: If the instruction doesn't mention hashtags, return the CURRENT hashtags EXACTLY as provided (don't regenerate them). Only the caption changes.\n` +
+      `IMPORTANT: Do not copy lines verbatim from the canonical voice examples — match the tone/rhythm/style only.`;
     const ctx = meta ? `Reel context: ${meta.reelContext || ""}\nOn-screen captions: ${(meta.captions || []).join(" | ")}` : "";
     const user =
       `${ctx ? ctx + "\n\n" : ""}` +
@@ -507,52 +782,224 @@ app.post("/post/refine", async (req, res) => {
   }
 });
 
-// Schedule (or post-now) the rendered MP4 to the chosen accounts.
-// body: { jobId, caption, hashtags?[], accounts: [{id, platform, pageId?}], scheduledTime?: ISO8601 }
+// ---- POST flow: prepare-photos endpoint ------------------------------------
+// The Post path (not Reel) uses this to auto-crop user photos to a target
+// platform aspect ratio with sharp's saliency-aware "attention" strategy, then
+// gentle sharpen + colour pop and an optional caption overlay (SVG composite).
+// Output: a list of public URLs the user can then post to socials via /post.
+
+// Output sizes per supported aspect. Square is intentionally Instagram-native.
+const POST_ASPECTS = {
+  square:    { w: 1080, h: 1080 },
+  portrait:  { w: 1080, h: 1350 },
+  story:     { w: 1080, h: 1920 },
+  landscape: { w: 1920, h: 1080 },
+};
+
+// Build a caption-overlay SVG: white text with a soft drop shadow on a
+// gradient band at the bottom of the photo. Wraps to multiple lines if needed.
+function captionSvg(text, w, h) {
+  if (!text) return null;
+  const safe = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // Rough char-per-line based on output width — works well for the 4 aspects we expose.
+  const maxCharsPerLine = Math.max(18, Math.floor(w / 38));
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = "";
+  for (const word of words) {
+    if ((cur ? cur + " " : "").length + word.length > maxCharsPerLine) {
+      if (cur) lines.push(cur);
+      cur = word;
+    } else {
+      cur = cur ? cur + " " + word : word;
+    }
+  }
+  if (cur) lines.push(cur);
+
+  const fontSize = Math.round(w / 24);
+  const lineHeight = Math.round(fontSize * 1.2);
+  const padTop = Math.round(fontSize * 1.0);
+  const padBottom = Math.round(fontSize * 1.2);
+  const bandHeight = lines.length * lineHeight + padTop + padBottom;
+  const bandTop = h - bandHeight;
+  const textTop = bandTop + padTop + fontSize;
+
+  const tspans = lines.map((l, i) =>
+    `<text x="${w / 2}" y="${textTop + i * lineHeight}" font-family="Helvetica, Arial, sans-serif" font-weight="800" font-size="${fontSize}" fill="white" text-anchor="middle" style="paint-order: stroke; stroke: rgba(0,0,0,0.55); stroke-width: 2.5px;">${safe(l)}</text>`
+  ).join("");
+
+  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+    <defs>
+      <linearGradient id="g" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#000" stop-opacity="0.82"/>
+        <stop offset="0.65" stop-color="#000" stop-opacity="0.22"/>
+        <stop offset="1" stop-color="#000" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="${bandTop}" width="${w}" height="${bandHeight}" fill="url(#g)"/>
+    ${tspans}
+  </svg>`);
+}
+
+const postPrepareUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024, files: 20 } });
+
+app.post("/post-prepare", postPrepareUpload.array("media", 20), async (req, res) => {
+  try {
+    const aspectKey = POST_ASPECTS[req.body.aspect] ? req.body.aspect : "square";
+    const dims = POST_ASPECTS[aspectKey];
+    const enhance = req.body.enhance !== "off";
+    // sharp.strategy.attention picks the most salient region — keeps faces/subjects.
+    // sharp.strategy.entropy is similar but biased to busy areas; "center" is a plain centre crop.
+    const cropMode = req.body.crop === "center" ? sharp.position.center : sharp.strategy.attention;
+    const manifest = (() => { try { return JSON.parse(req.body.manifest || "[]"); } catch { return []; } })();
+    const manifestList = Array.isArray(manifest) ? manifest : [];
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ error: "No media uploaded." });
+
+    const batchId = crypto.randomBytes(6).toString("hex");
+    const outDir = path.join(UPLOADS_DIR, "post", batchId);
+    fs.mkdirSync(outDir, { recursive: true });
+
+    const items = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      // Frontend sends files in the same order as the manifest entries, so we
+      // index-match instead of parsing IDs out of filenames (UUIDs contain hyphens).
+      const m = manifestList[i] || {};
+      const id = m.id || `m${i}`;
+      const caption = m.caption || "";
+      const safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, "");
+      const outName = `${String(i).padStart(2, "0")}-${safeId || ("m" + i)}.jpg`;
+      const outPath = path.join(outDir, outName);
+
+      let img = sharp(file.buffer).rotate(); // honour EXIF orientation
+      img = img.resize({ width: dims.w, height: dims.h, fit: "cover", position: cropMode });
+      if (enhance) {
+        img = img.modulate({ brightness: 1.04, saturation: 1.1 }).sharpen({ sigma: 1.0, m1: 0.7, m2: 2 });
+      }
+      img = img.jpeg({ quality: 90, progressive: true, chromaSubsampling: "4:4:4" });
+
+      if (caption) {
+        // Composite needs a finalized buffer to sit underneath the SVG.
+        const buf = await img.toBuffer();
+        const svg = captionSvg(caption, dims.w, dims.h);
+        await sharp(buf).composite([{ input: svg, top: 0, left: 0 }]).jpeg({ quality: 90, progressive: true, chromaSubsampling: "4:4:4" }).toFile(outPath);
+      } else {
+        await img.toFile(outPath);
+      }
+      items.push({ id, url: `${BASE}/uploads/post/${batchId}/${outName}`, mime: "image/jpeg" });
+    }
+
+    res.json({ batchId, aspect: aspectKey, items });
+  } catch (err) {
+    console.error("Post-prepare failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// Read a local /uploads URL and upload its bytes to Blotato, returning the Blotato URL.
+// Used by both Reel mode (rendered MP4) and Post mode (prepared photos).
+async function uploadLocalToBlotato(localUrl) {
+  if (typeof localUrl !== "string" || !localUrl.startsWith(BASE + "/")) {
+    throw new Error("Refusing to upload non-local URL: " + localUrl);
+  }
+  const relativePath = localUrl.slice((BASE + "/").length);
+  const filePath = path.resolve(PUBLIC_DIR, relativePath);
+  // Path-traversal guard — must stay under PUBLIC_DIR.
+  if (!filePath.startsWith(PUBLIC_DIR + path.sep)) {
+    throw new Error("Path traversal blocked: " + relativePath);
+  }
+  if (!fs.existsSync(filePath)) throw new Error("File not found: " + relativePath);
+  const buf = fs.readFileSync(filePath);
+  const ext = path.extname(filePath).toLowerCase();
+  const mime = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : ext === ".mp4" ? "video/mp4" : "image/jpeg";
+  const dataUri = `data:${mime};base64,${buf.toString("base64")}`;
+  const uploaded = await blotato("POST", "/media", { url: dataUri });
+  if (!uploaded?.url) throw new Error("Blotato media upload returned no URL.");
+  return uploaded.url;
+}
+
+// Post to the chosen socials. Handles BOTH flows:
+//   Reel mode: body has { jobId } — uploads the rendered MP4 from the jobs map.
+//   Post mode: body has { mediaUrls: [...] } — already-prepared photos from /post-prepare.
+//                                              + posting: "carousel" | "separate" (default carousel).
+// Per-account caption/hashtags is supported in both modes.
 app.post("/post", async (req, res) => {
   try {
     if (!BLOTATO_KEY) return res.status(400).json({ error: "Blotato is off. Add BLOTATO_API_KEY to reel-maker/.env." });
-    const { jobId, caption, hashtags, accounts, scheduledTime } = req.body || {};
-    if (!jobId) return res.status(400).json({ error: "Missing jobId." });
+    const { jobId, mediaUrls, posting, caption, hashtags, accounts, scheduledTime } = req.body || {};
     if (!Array.isArray(accounts) || !accounts.length) return res.status(400).json({ error: "Pick at least one account to post to." });
-    const j = jobs.get(jobId);
-    if (!j || j.status !== "done" || !j.file || !fs.existsSync(j.file)) return res.status(400).json({ error: "Render not ready for this job." });
 
-    // 1. Upload the MP4 to Blotato (base64 data URI works for files within the size limit).
-    const buf = fs.readFileSync(j.file);
-    const dataUri = `data:video/mp4;base64,${buf.toString("base64")}`;
-    const uploaded = await blotato("POST", "/media", { url: dataUri });
-    const mediaUrl = uploaded.url;
-    if (!mediaUrl) throw new Error("Blotato upload returned no URL.");
+    // --- collect blotato media URLs once (reused across accounts) -----------
+    let bloMedia = []; // [blotato-url, ...]
+    let isVideo = false;
+    let videoFormat = null; // tracks reel-aspect for mediaType:"reel" gating
+    if (jobId) {
+      // Reel mode: upload the rendered MP4.
+      const j = jobs.get(jobId);
+      if (!j || j.status !== "done" || !j.file || !fs.existsSync(j.file)) return res.status(400).json({ error: "Render not ready for this job." });
+      const buf = fs.readFileSync(j.file);
+      const dataUri = `data:video/mp4;base64,${buf.toString("base64")}`;
+      const uploaded = await blotato("POST", "/media", { url: dataUri });
+      if (!uploaded?.url) throw new Error("Blotato upload returned no URL.");
+      bloMedia = [uploaded.url];
+      isVideo = true;
+      videoFormat = j.format || "reels";
+    } else if (Array.isArray(mediaUrls) && mediaUrls.length) {
+      // Post mode: upload each prepared photo in order. (Videos later.)
+      for (const url of mediaUrls) bloMedia.push(await uploadLocalToBlotato(url));
+    } else {
+      return res.status(400).json({ error: "Provide either jobId (reel mode) or mediaUrls (post mode)." });
+    }
 
-    // 2. Build the post body for each selected account and schedule it.
-    const text = [caption || "", Array.isArray(hashtags) ? hashtags.join(" ") : ""].filter(Boolean).join("\n\n");
+    const fallbackText = [caption || "", Array.isArray(hashtags) ? hashtags.join(" ") : ""].filter(Boolean).join("\n\n");
+    // Carousel = send all media in one post per account. Separate = one post per media per account.
+    const mode = (posting === "separate" && bloMedia.length > 1) ? "separate" : "carousel";
+    // bloMedia[] groupings: carousel = [allUrls]; separate = [[url1],[url2],...]
+    const groups = mode === "carousel" ? [bloMedia] : bloMedia.map((u) => [u]);
+
     const results = [];
     for (const a of accounts) {
-      try {
-        const post = {
-          accountId: a.id,
-          content: { text, mediaUrls: [mediaUrl], platform: a.platform },
-          target: { targetType: a.platform },
-        };
-        if (a.platform === "instagram") post.target.mediaType = "reel";
-        if (a.platform === "facebook") { post.target.mediaType = "reel"; if (a.pageId) post.target.pageId = a.pageId; }
-        if (a.platform === "linkedin" && a.pageId) post.target.pageId = a.pageId;
-        const body = scheduledTime ? { post, scheduledTime } : { post };
-        const r = await blotato("POST", "/posts", body);
-        results.push({ platform: a.platform, ok: true, id: r.id || r.postId || null, when: scheduledTime || "now" });
-      } catch (e) {
-        results.push({ platform: a.platform, ok: false, error: String(e.message || e) });
+      const accountCaption = typeof a.caption === "string" ? a.caption : null;
+      const accountTags = Array.isArray(a.hashtags) ? a.hashtags.join(" ") : null;
+      const text = (accountCaption !== null || accountTags !== null)
+        ? [accountCaption || "", accountTags || ""].filter(Boolean).join("\n\n")
+        : fallbackText;
+      for (let gi = 0; gi < groups.length; gi++) {
+        try {
+          const post = {
+            accountId: a.id,
+            content: { text, mediaUrls: groups[gi], platform: a.platform },
+            target: { targetType: a.platform },
+          };
+          // mediaType=reel only applies to 9:16 vertical videos. Photo posts never set it.
+          if (isVideo) {
+            if (a.platform === "instagram" && videoFormat === "reels") post.target.mediaType = "reel";
+            if (a.platform === "facebook" && videoFormat === "reels") post.target.mediaType = "reel";
+          }
+          if (a.platform === "facebook" && a.pageId) post.target.pageId = a.pageId;
+          if (a.platform === "linkedin" && a.pageId) post.target.pageId = a.pageId;
+          const body = scheduledTime ? { post, scheduledTime } : { post };
+          const r = await blotato("POST", "/posts", body);
+          results.push({ platform: a.platform, group: gi, ok: true, id: r.id || r.postId || null, when: scheduledTime || "now" });
+        } catch (e) {
+          results.push({ platform: a.platform, group: gi, ok: false, error: String(e.message || e) });
+        }
       }
     }
-    res.json({ results, mediaUrl });
+    res.json({ results, mode, mediaCount: bloMedia.length });
   } catch (err) {
     console.error("Post failed:", err);
     res.status(500).json({ error: String(err.message || err) });
   }
 });
 
+// Aspect ratios the server knows how to render — used to validate meta.format.
+const RENDER_FORMATS = ["reels", "square", "landscape"];
+
 // Kick off a render. Returns { jobId } immediately; poll /progress/:id.
+// One render per click; the user picks the aspect ratio on step 3 and the
+// rendered MP4 is what step 4 previews and posts to whichever platforms they tick.
 app.post("/render", assignJobId, upload.array("photos", 20), async (req, res) => {
   try {
     const jobId = req.jobId;
@@ -562,7 +1009,10 @@ app.post("/render", assignJobId, upload.array("photos", 20), async (req, res) =>
 
     const captions = Array.isArray(meta.captions) ? meta.captions : [];
     // Downscale to a render-friendly size (1800px) so Chrome isn't decoding
-    // multi-MB full-res photos on every frame — the biggest render speed-up.
+    // multi-MB full-res photos on every frame. `fit: inside` preserves the
+    // original aspect ratio — templates use the contained-on-blurred-backdrop
+    // pattern to fill the frame WITHOUT cropping the photo. (We tried server-
+    // side smart-crop briefly; it lost important edges, so reverted.)
     const optUrls = [];
     for (let i = 0; i < files.length; i++) {
       const optName = `opt-${String(i).padStart(2, "0")}.jpg`;
@@ -589,9 +1039,10 @@ app.post("/render", assignJobId, upload.array("photos", 20), async (req, res) =>
       slides = optUrls.map((u, i) => ({ images: [u], caption: (captions[i] || "").trim() }));
     }
 
-    const inputProps = {
-      format: meta.format || "reels",
+    // Shared props across all three formats (format itself is set per-render below).
+    const baseProps = {
       slides,
+      template: meta.template || "signature",
       kicker: meta.kicker ?? brand.defaultCopy.kicker,
       title: meta.title ?? brand.defaultCopy.title,
       subtitle: meta.subtitle ?? brand.defaultCopy.subtitle,
@@ -613,7 +1064,9 @@ app.post("/render", assignJobId, upload.array("photos", 20), async (req, res) =>
       lightLeak: clamp(meta.lightLeak, 0, 1, 1),
     };
 
-    jobs.set(jobId, { status: "rendering", progress: 0, file: null, error: null });
+    const format = RENDER_FORMATS.includes(meta.format) ? meta.format : "reels";
+    const inputProps = { ...baseProps, format };
+    jobs.set(jobId, { status: "rendering", progress: 0, file: null, format, error: null });
     res.json({ jobId });
 
     // Render in the background.
@@ -628,17 +1081,19 @@ app.post("/render", assignJobId, upload.array("photos", 20), async (req, res) =>
           codec: "h264",
           outputLocation,
           inputProps,
-          concurrency: 8, // use more of the 10 cores (default is ~half)
+          concurrency: 8,
           onProgress: ({ progress }) => {
             const j = jobs.get(jobId);
             if (j) j.progress = progress;
           },
         });
-        jobs.set(jobId, { status: "done", progress: 1, file: outputLocation, error: null });
-        console.log(`Rendered ${jobId}.mp4 (${composition.durationInFrames} frames)`);
+        const j = jobs.get(jobId);
+        if (j) { j.status = "done"; j.progress = 1; j.file = outputLocation; }
+        console.log(`Rendered ${jobId}.mp4 (${format}, ${composition.durationInFrames} frames)`);
       } catch (err) {
         console.error("Render failed:", err);
-        jobs.set(jobId, { status: "error", progress: 0, file: null, error: String(err.message || err) });
+        const j = jobs.get(jobId);
+        if (j) { j.status = "error"; j.progress = 0; j.file = null; j.error = String(err.message || err); }
       }
     })();
   } catch (err) {
@@ -649,7 +1104,9 @@ app.post("/render", assignJobId, upload.array("photos", 20), async (req, res) =>
 app.get("/progress/:id", (req, res) => {
   const j = jobs.get(req.params.id);
   if (!j) return res.status(404).json({ error: "Unknown job" });
-  res.json({ status: j.status, progress: j.progress, error: j.error });
+  // `format` is what was actually rendered — the step-4 preview uses it to set
+  // its aspect-ratio chrome so the video isn't cropped on any platform card.
+  res.json({ status: j.status, progress: j.progress, error: j.error, format: j.format });
 });
 
 app.get("/download/:id", (req, res) => {
