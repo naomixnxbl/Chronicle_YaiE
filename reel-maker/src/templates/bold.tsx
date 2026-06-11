@@ -82,12 +82,10 @@ const Slide: React.FC<SlideProps> = ({ slide, index, durationInFrames, props }) 
   return (
     <AbsoluteFill style={{ background: "#0a0e16" }}>
       <AbsoluteFill style={{ flexDirection: sideBySide ? "row" : "column" }}>
-        {/* Type column. Sits before the photo in portrait so the photo is at the bottom (eye-catch); after in landscape so reading flows right. */}
+        {/* Type column. Sits before the photo in portrait so the photo is at the bottom (eye-catch); after in landscape so reading flows right.
+            No per-slide counter or wordmark — the brand HUD up top covers that. */}
         <div style={{ flex: sideBySide ? 1 : "0 0 48%", display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", padding: `${base * 0.05}px ${base * 0.06}px`, order: sideBySide ? 0 : 1 }}>
           {slide.caption ? <StackedWords text={slide.caption} accent={props.accent} sizeMul={props.captionScale} /> : null}
-          <div style={{ marginTop: base * 0.04, fontFamily: SANS, fontWeight: 800, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", fontSize: Math.round(base * 0.02) }}>
-            0{index + 1}  /  {String(props.slides.length).padStart(2, "0")}  ·  {props.wordmark}
-          </div>
         </div>
         {/* Photo panel — full-bleed cover. Photo is pre-cropped server-side to the format aspect. */}
         <div style={{ flex: sideBySide ? "0 0 46%" : "0 0 52%", position: "relative", overflow: "hidden", borderLeft: sideBySide ? `3px solid ${props.accent}` : "none", borderTop: sideBySide ? "none" : `3px solid ${props.accent}` }}>

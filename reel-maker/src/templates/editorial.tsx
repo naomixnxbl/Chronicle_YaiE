@@ -117,8 +117,10 @@ const Slide: React.FC<SlideProps> = ({ slide, index, durationInFrames, props }) 
           background: sideBySide ? `radial-gradient(120% 80% at 100% 0%, ${props.accent}12 0%, transparent 60%)` : "transparent",
         }}>
           <div>
+            {/* Kicker: just "Field Notes" — no slide numbering (the top brand
+                HUD already identifies WSTI on every frame). */}
             <div style={{ fontFamily: SANS, fontWeight: 800, letterSpacing: "0.32em", textTransform: "uppercase", color: props.accent, fontSize: Math.round(base * 0.022), opacity: capReveal }}>
-              {String(index + 1).padStart(2, "0")}  ·  Field Notes
+              Field Notes
             </div>
             <div style={{ marginTop: base * 0.022 }}>
               <ColumnRule accent={props.accent} length={base * 0.08} thickness={2} />
@@ -130,7 +132,7 @@ const Slide: React.FC<SlideProps> = ({ slide, index, durationInFrames, props }) 
                   fontWeight: 800,
                   color: "#fbfbf7",
                   // Bigger pull-quote in landscape — fills the column properly instead of looking lost.
-                  fontSize: Math.round(base * (sideBySide ? 0.078 : 0.046) * props.captionScale),
+                  fontSize: Math.round(base * (sideBySide ? 0.082 : 0.05) * props.captionScale),
                   lineHeight: 1.05,
                   marginTop: base * 0.03,
                   maxWidth: "100%",
@@ -143,23 +145,11 @@ const Slide: React.FC<SlideProps> = ({ slide, index, durationInFrames, props }) 
             </div>
             ) : null}
           </div>
-          {/* Bottom of the column: full wordmark + tagline + counter. Fills
-              the vertical space so the column doesn't look empty in landscape. */}
+          {/* Bottom: a clean accent rule only. No wordmark, no handle, no slide
+              counter — the brand HUD up top already covers attribution and the
+              user doesn't want every slide labelled WSTI / X of N. */}
           <div style={{ opacity: lockupReveal, transform: `translateY(${(1 - lockupReveal) * 10}px)` }}>
-            <div style={{ width: "100%", height: 1, background: "rgba(251,251,247,0.14)", marginBottom: base * 0.022 }} />
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: base * 0.02 }}>
-              <div>
-                <div style={{ fontFamily: SERIF, fontWeight: 800, color: "#fbfbf7", fontSize: Math.round(base * (sideBySide ? 0.04 : 0.026)), lineHeight: 1, letterSpacing: "-0.3px" }}>
-                  {props.wordmark}
-                </div>
-                <div style={{ marginTop: base * 0.01, fontFamily: SANS, fontWeight: 600, color: "rgba(251,251,247,0.55)", fontSize: Math.round(base * 0.018), letterSpacing: "0.04em" }}>
-                  {props.handle || props.website}
-                </div>
-              </div>
-              <div style={{ fontFamily: SANS, fontWeight: 800, color: props.accent, fontSize: Math.round(base * (sideBySide ? 0.05 : 0.028)), letterSpacing: "0.04em", lineHeight: 1 }}>
-                {String(index + 1).padStart(2, "0")}<span style={{ color: "rgba(251,251,247,0.32)" }}>/{String(props.slides.length).padStart(2, "0")}</span>
-              </div>
-            </div>
+            <ColumnRule accent={props.accent} length={base * 0.06} thickness={3} />
           </div>
         </div>
       </AbsoluteFill>

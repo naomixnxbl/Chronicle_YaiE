@@ -411,9 +411,9 @@ Given the reel's goal and each photo (image + a short note), produce:
 2. A short on-screen CAPTION for each slide.
 3. Intro copy (title + subtitle) and outro copy (closing headline + sub-line).
 
-PAIRING (elegant editorial pairs): when TWO photos clearly belong to the SAME moment or topic — e.g. two angles of the same talk, two people in the same discussion, before/after of one activity — you MAY put them in a single slide that shows both with ONE shared caption. Use this sparingly (at most one or two pairs in a reel) and only when it genuinely strengthens the story. Everything else stays a single photo.
+NEVER GROUP / PAIR PHOTOS AUTOMATICALLY. Every photo gets its own slide. The "indices" array MUST contain exactly ONE photo index per slide. Photo pairing is a manual choice the user makes on the upload screen — never something you decide for them.
 
-Return "sequence" as a list of slides. Each slide has "indices" (ONE or TWO photo indices, matching the bracketed numbers shown with each photo) and a "caption". Every photo index must appear exactly once across all slides.
+Return "sequence" as a list of slides. Each slide has "indices" — an array of ONE photo index — and a "caption". Every photo index must appear exactly once across all slides.
 
 Caption voice — be CREATIVE and ON-BRAND (match the voice above):
 - 2 to 5 words. Vivid, human, a little playful. Celebrate the people, the energy, and what makes this community special.
@@ -461,10 +461,10 @@ app.post("/story", memUpload.array("photos", 20), async (req, res) => {
     const format = meta.format || "reels";
     const formatNote =
       format === "reels"
-        ? "TARGET FORMAT: 9:16 vertical (Reels). PAIR GENEROUSLY: a single wide (landscape) photo looks weak in a tall frame, so pair two related landscape photos into one stacked slide wherever it makes sense — aim for most slides to be pairs. Keep portrait shots or a strong hero/group photo as singles. Still respect the narrative arc."
+        ? "TARGET FORMAT: 9:16 vertical (Reels). One photo per slide. Do NOT pair photos under any circumstances."
         : format === "square"
-        ? "TARGET FORMAT: 1:1 square. Pairing is optional — use it only for genuinely related moments."
-        : "TARGET FORMAT: 16:9 landscape. Mostly single photos; pair only two clearly-related shots occasionally.";
+        ? "TARGET FORMAT: 1:1 square. One photo per slide. Do NOT pair photos."
+        : "TARGET FORMAT: 16:9 landscape. One photo per slide. Do NOT pair photos.";
 
     const content = [
       {
@@ -796,14 +796,77 @@ const POST_ASPECTS = {
   landscape: { w: 1920, h: 1080 },
 };
 
-// Build a caption-overlay SVG: white text with a soft drop shadow on a
-// gradient band at the bottom of the photo. Wraps to multiple lines if needed.
-function captionSvg(text, w, h) {
+// Font presets — each picks a different vibe. The font stack lists multiple
+// candidate families so librsvg (sharp's SVG engine) can resolve whichever
+// is installed on this machine. All five rely only on macOS / Windows system
+// fonts so no extra binary assets are needed.
+const CAPTION_FONTS = {
+  "bold-display": {
+    label: "Bold Display",
+    family: "Impact, 'Helvetica Neue', 'Arial Black', sans-serif",
+    weight: 900,
+    upper: true,
+    letterSpacing: -1.5,
+    italic: false,
+  },
+  "modern-sans": {
+    label: "Modern Sans",
+    family: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+    weight: 800,
+    upper: false,
+    letterSpacing: -0.5,
+    italic: false,
+  },
+  "editorial-serif": {
+    label: "Editorial Serif",
+    family: "'Playfair Display', Georgia, 'Times New Roman', Times, serif",
+    weight: 800,
+    upper: false,
+    letterSpacing: 0,
+    italic: false,
+  },
+  "handwritten": {
+    label: "Handwritten",
+    family: "'Marker Felt', 'Bradley Hand', 'Comic Sans MS', cursive",
+    weight: 700,
+    upper: false,
+    letterSpacing: 0,
+    italic: false,
+  },
+  "stencil": {
+    label: "Stencil",
+    family: "Stencil, 'Stencil Std', Impact, 'Arial Black', sans-serif",
+    weight: 900,
+    upper: true,
+    letterSpacing: 2,
+    italic: false,
+  },
+};
+
+// Build a caption-overlay SVG. Font choice is configurable via opts.font
+// (one of the keys in CAPTION_FONTS); a brand-coloured accent rule sits above
+// the text and the last line picks up the brand accent for one highlight word.
+function captionSvg(text, w, h, opts = {}) {
   if (!text) return null;
+  const accent = opts.accent || "#3BCB97";
+  const fontKey = CAPTION_FONTS[opts.font] ? opts.font : "bold-display";
+  const F = CAPTION_FONTS[fontKey];
   const safe = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  // Rough char-per-line based on output width — works well for the 4 aspects we expose.
-  const maxCharsPerLine = Math.max(18, Math.floor(w / 38));
-  const words = String(text).split(/\s+/).filter(Boolean);
+  // Big enough to read at-a-glance on a phone (was w/24 in v1, now w/16).
+  const fontSize = Math.round(w / 16);
+  const lineHeight = Math.round(fontSize * 1.0); // tight stack, display-style
+  const padTop = Math.round(fontSize * 0.55);
+  const padBottom = Math.round(fontSize * 0.9);
+  const ruleH = Math.max(4, Math.round(w / 220));
+  const ruleW = Math.round(w * 0.10);
+
+  // Word-wrap to fill the band width — display fonts are narrow so we can fit
+  // more chars per line than a regular sans. Tighten the char count for serifs
+  // (which set wider than the condensed display fonts).
+  const charDensity = F.family.includes("serif") ? 0.55 : 0.42;
+  const maxCharsPerLine = Math.max(14, Math.floor(w / (fontSize * charDensity)));
+  const rawWords = String(text).split(/\s+/).filter(Boolean);
+  const words = F.upper ? rawWords.map((w) => w.toUpperCase()) : rawWords;
   const lines = [];
   let cur = "";
   for (const word of words) {
@@ -816,28 +879,35 @@ function captionSvg(text, w, h) {
   }
   if (cur) lines.push(cur);
 
-  const fontSize = Math.round(w / 24);
-  const lineHeight = Math.round(fontSize * 1.2);
-  const padTop = Math.round(fontSize * 1.0);
-  const padBottom = Math.round(fontSize * 1.2);
-  const bandHeight = lines.length * lineHeight + padTop + padBottom;
+  const bandHeight = lines.length * lineHeight + padTop + padBottom + ruleH + Math.round(fontSize * 0.4);
   const bandTop = h - bandHeight;
-  const textTop = bandTop + padTop + fontSize;
+  const ruleTop = bandTop + padTop;
+  const textTop = ruleTop + ruleH + Math.round(fontSize * 0.55) + fontSize * 0.85; // baseline of first line
 
-  const tspans = lines.map((l, i) =>
-    `<text x="${w / 2}" y="${textTop + i * lineHeight}" font-family="Helvetica, Arial, sans-serif" font-weight="800" font-size="${fontSize}" fill="white" text-anchor="middle" style="paint-order: stroke; stroke: rgba(0,0,0,0.55); stroke-width: 2.5px;">${safe(l)}</text>`
-  ).join("");
+  // Pick which line gets the accent colour — last line if 2+ lines (the "key"
+  // phrase usually lands at the end), otherwise the only line.
+  const accentLineIdx = lines.length > 1 ? lines.length - 1 : -1;
+  const tspans = lines.map((l, i) => {
+    const fill = i === accentLineIdx ? accent : "#ffffff";
+    return `<text x="${w / 2}" y="${textTop + i * lineHeight}" font-family="${F.family}" font-weight="${F.weight}" font-size="${fontSize}" letter-spacing="${F.letterSpacing}" font-style="${F.italic ? "italic" : "normal"}" fill="${fill}" text-anchor="middle" style="paint-order: stroke; stroke: rgba(0,0,0,0.85); stroke-width: ${Math.round(fontSize * 0.06)}px; stroke-linejoin: round;">${safe(l)}</text>`;
+  }).join("");
 
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
     <defs>
       <linearGradient id="g" x1="0" y1="1" x2="0" y2="0">
-        <stop offset="0" stop-color="#000" stop-opacity="0.82"/>
-        <stop offset="0.65" stop-color="#000" stop-opacity="0.22"/>
+        <stop offset="0" stop-color="#000" stop-opacity="0.88"/>
+        <stop offset="0.7" stop-color="#000" stop-opacity="0.25"/>
         <stop offset="1" stop-color="#000" stop-opacity="0"/>
       </linearGradient>
+      <filter id="ds" x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="${Math.round(fontSize * 0.05)}" stdDeviation="${Math.round(fontSize * 0.04)}" flood-opacity="0.6"/>
+      </filter>
     </defs>
     <rect x="0" y="${bandTop}" width="${w}" height="${bandHeight}" fill="url(#g)"/>
-    ${tspans}
+    <rect x="${(w - ruleW) / 2}" y="${ruleTop}" width="${ruleW}" height="${ruleH}" rx="${ruleH / 2}" fill="${accent}"/>
+    <g filter="url(#ds)">
+      ${tspans}
+    </g>
   </svg>`);
 }
 
@@ -848,9 +918,18 @@ app.post("/post-prepare", postPrepareUpload.array("media", 20), async (req, res)
     const aspectKey = POST_ASPECTS[req.body.aspect] ? req.body.aspect : "square";
     const dims = POST_ASPECTS[aspectKey];
     const enhance = req.body.enhance !== "off";
-    // sharp.strategy.attention picks the most salient region — keeps faces/subjects.
-    // sharp.strategy.entropy is similar but biased to busy areas; "center" is a plain centre crop.
-    const cropMode = req.body.crop === "center" ? sharp.position.center : sharp.strategy.attention;
+    // How the photo fills the target aspect:
+    //   "whole" (default) — WHOLE photo always visible, blurred backdrop fills the bars.
+    //   "cover" — fill edge-to-edge, saliency-aware crop (keeps faces in view).
+    //   "center" — fill edge-to-edge, centred crop.
+    // Old client values "attention" or empty fall through to "whole" since the
+    // user explicitly asked for the whole-photo default.
+    const cropChoiceRaw = req.body.crop || "whole";
+    const cropChoice = ["whole", "cover", "center"].includes(cropChoiceRaw) ? cropChoiceRaw : "whole";
+    const wholePhoto = cropChoice === "whole";
+    // Font for text overlays — client passes one of the CAPTION_FONTS keys.
+    const fontChoice = CAPTION_FONTS[req.body.font] ? req.body.font : "bold-display";
+    const cropMode = cropChoice === "center" ? sharp.position.center : sharp.strategy.attention;
     const manifest = (() => { try { return JSON.parse(req.body.manifest || "[]"); } catch { return []; } })();
     const manifestList = Array.isArray(manifest) ? manifest : [];
     const files = req.files || [];
@@ -863,8 +942,6 @@ app.post("/post-prepare", postPrepareUpload.array("media", 20), async (req, res)
     const items = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      // Frontend sends files in the same order as the manifest entries, so we
-      // index-match instead of parsing IDs out of filenames (UUIDs contain hyphens).
       const m = manifestList[i] || {};
       const id = m.id || `m${i}`;
       const caption = m.caption || "";
@@ -872,20 +949,36 @@ app.post("/post-prepare", postPrepareUpload.array("media", 20), async (req, res)
       const outName = `${String(i).padStart(2, "0")}-${safeId || ("m" + i)}.jpg`;
       const outPath = path.join(outDir, outName);
 
-      let img = sharp(file.buffer).rotate(); // honour EXIF orientation
-      img = img.resize({ width: dims.w, height: dims.h, fit: "cover", position: cropMode });
-      if (enhance) {
-        img = img.modulate({ brightness: 1.04, saturation: 1.1 }).sharpen({ sigma: 1.0, m1: 0.7, m2: 2 });
-      }
-      img = img.jpeg({ quality: 90, progressive: true, chromaSubsampling: "4:4:4" });
+      // Source buffer (rotated for EXIF).
+      const srcBuffer = await sharp(file.buffer).rotate().toBuffer();
 
-      if (caption) {
-        // Composite needs a finalized buffer to sit underneath the SVG.
-        const buf = await img.toBuffer();
-        const svg = captionSvg(caption, dims.w, dims.h);
-        await sharp(buf).composite([{ input: svg, top: 0, left: 0 }]).jpeg({ quality: 90, progressive: true, chromaSubsampling: "4:4:4" }).toFile(outPath);
+      let processedBuf;
+      if (wholePhoto) {
+        // ----- CONTAIN ON BLURRED BACKDROP (same pattern reel templates use) -----
+        // 1. Backdrop: blur + scale the source to fill the target aspect (cover).
+        // 2. Foreground: contain the source so the WHOLE image fits (no crop).
+        // 3. Composite foreground on backdrop, then optionally apply enhance pass.
+        const bgImg = sharp(srcBuffer).resize({ width: dims.w, height: dims.h, fit: "cover", position: sharp.strategy.attention }).blur(28).modulate({ brightness: 0.55, saturation: 1.25 });
+        const bg = await bgImg.toBuffer();
+        // Foreground at full quality, contained inside the target.
+        const fg = await sharp(srcBuffer).resize({ width: dims.w, height: dims.h, fit: "inside", withoutEnlargement: false }).toBuffer();
+        // Composite the contained photo centered on the blurred backdrop.
+        let composed = sharp(bg).composite([{ input: fg, gravity: "center" }]);
+        if (enhance) composed = composed.modulate({ brightness: 1.03, saturation: 1.08 }).sharpen({ sigma: 0.8, m1: 0.6, m2: 2 });
+        processedBuf = await composed.jpeg({ quality: 92, progressive: true, chromaSubsampling: "4:4:4" }).toBuffer();
       } else {
-        await img.toFile(outPath);
+        // ----- COVER (legacy) — fill edge-to-edge, saliency-aware crop -----
+        let img = sharp(srcBuffer).resize({ width: dims.w, height: dims.h, fit: "cover", position: cropMode });
+        if (enhance) img = img.modulate({ brightness: 1.04, saturation: 1.1 }).sharpen({ sigma: 1.0, m1: 0.7, m2: 2 });
+        processedBuf = await img.jpeg({ quality: 92, progressive: true, chromaSubsampling: "4:4:4" }).toBuffer();
+      }
+
+      // Caption overlay — composited last so it sits on top of the final image.
+      if (caption) {
+        const svg = captionSvg(caption, dims.w, dims.h, { accent: brand.accent, font: fontChoice });
+        await sharp(processedBuf).composite([{ input: svg, top: 0, left: 0 }]).jpeg({ quality: 92, progressive: true, chromaSubsampling: "4:4:4" }).toFile(outPath);
+      } else {
+        await sharp(processedBuf).jpeg({ quality: 92, progressive: true, chromaSubsampling: "4:4:4" }).toFile(outPath);
       }
       items.push({ id, url: `${BASE}/uploads/post/${batchId}/${outName}`, mime: "image/jpeg" });
     }
@@ -1101,22 +1194,35 @@ app.post("/render", assignJobId, upload.array("photos", 20), async (req, res) =>
   }
 });
 
+// The `jobs` Map is in-memory only, so a server restart wipes it. Both
+// /progress and /download fall back to checking the rendered MP4 on disk —
+// the user can still preview / download a render they kicked off in a
+// previous server run, without having to re-render.
+function jobFilePath(jobId) {
+  return path.join(OUT_DIR, `${jobId}.mp4`);
+}
+
 app.get("/progress/:id", (req, res) => {
   const j = jobs.get(req.params.id);
-  if (!j) return res.status(404).json({ error: "Unknown job" });
-  // `format` is what was actually rendered — the step-4 preview uses it to set
-  // its aspect-ratio chrome so the video isn't cropped on any platform card.
-  res.json({ status: j.status, progress: j.progress, error: j.error, format: j.format });
+  if (j) {
+    return res.json({ status: j.status, progress: j.progress, error: j.error, format: j.format });
+  }
+  // Fallback: file on disk = the render finished before a server restart.
+  if (fs.existsSync(jobFilePath(req.params.id))) {
+    return res.json({ status: "done", progress: 1, error: null, format: "reels", recovered: true });
+  }
+  return res.status(404).json({ error: "Unknown job" });
 });
 
 app.get("/download/:id", (req, res) => {
   const j = jobs.get(req.params.id);
-  if (!j || j.status !== "done" || !j.file) return res.status(404).send("Not ready");
+  const file = (j && j.status === "done" && j.file) ? j.file : jobFilePath(req.params.id);
+  if (!fs.existsSync(file)) return res.status(404).send("Not ready");
   if (req.query.inline === "1") {
     // sendFile supports HTTP range requests + sets video/mp4 — needed for in-browser <video> playback
-    return res.sendFile(j.file, { headers: { "Content-Type": "video/mp4" } });
+    return res.sendFile(file, { headers: { "Content-Type": "video/mp4" } });
   }
-  res.download(j.file, `${brand.id}-reel-${req.params.id}.mp4`);
+  res.download(file, `${brand.id}-reel-${req.params.id}.mp4`);
 });
 
 app.listen(PORT, () => {

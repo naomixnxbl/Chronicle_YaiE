@@ -90,13 +90,10 @@ const Slide: React.FC<SlideProps> = ({ slide, index, durationInFrames, props }) 
           )}
         </div>
         <div style={{ flex: sideBySide ? 1 : 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: `0 ${base * 0.01}px` }}>
-          <div style={{ fontFamily: SANS, fontWeight: 800, letterSpacing: "0.42em", textTransform: "uppercase", color: "#9a9da3", fontSize: Math.round(base * 0.018) }}>
-            {String(index + 1).padStart(2, "0")} / {String(props.slides.length).padStart(2, "0")}
-          </div>
+          {/* No "01 / 04" slide counter — the brand HUD up top already identifies
+              the brand on every frame; per-slide numbering reads as receipt-y. */}
           {slide.caption ? (
-            <div style={{ marginTop: base * 0.02 }}>
-              <AccentCaption text={slide.caption} accent={props.accent} sizeMul={props.captionScale} />
-            </div>
+            <AccentCaption text={slide.caption} accent={props.accent} sizeMul={props.captionScale} />
           ) : null}
         </div>
       </AbsoluteFill>

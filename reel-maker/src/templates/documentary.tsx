@@ -106,7 +106,7 @@ const Slide: React.FC<SlideProps> = ({ slide, index, durationInFrames, props }) 
       {slide.caption ? (
         <>
           <AbsoluteFill style={{ justifyContent: "flex-end", alignItems: "center", padding: `0 0 ${base * 0.14}px` }}>
-            <Subtitle text={slide.caption} accent={props.accent} sizeMul={props.captionScale} sub={`Scene ${String(index + 1).padStart(2, "0")}`} />
+            <Subtitle text={slide.caption} accent={props.accent} sizeMul={props.captionScale} />
           </AbsoluteFill>
           {/* soft tap as the subtitle bar slides up */}
           <SoundStamp at={6} volume={0.3} />

@@ -631,17 +631,32 @@
               </select>
             </div>
             <div class="field">
-              <label>Crop strategy</label>
+              <label>How to fit the photo</label>
               <select id="postCrop">
-                <option value="attention">Smart (keeps the interesting part)</option>
-                <option value="center">Centre</option>
+                <option value="whole">Show whole photo (recommended — fills the rest with a blurred backdrop)</option>
+                <option value="cover">Crop to fill (smart — keeps faces in view)</option>
+                <option value="center">Crop to fill (centred)</option>
               </select>
             </div>
           </div>
 
+          <div class="field" style="margin-top:6px;">
+            <label>Text overlay font</label>
+            <select id="postFont">
+              <option value="bold-display">Bold Display — Impact-style, uppercase, tight (default)</option>
+              <option value="modern-sans">Modern Sans — clean Helvetica, sentence case</option>
+              <option value="editorial-serif">Editorial Serif — Playfair / Georgia, magazine-style</option>
+              <option value="handwritten">Handwritten — Marker Felt, warm + casual</option>
+              <option value="stencil">Stencil — military / chunky, uppercase</option>
+            </select>
+          </div>
+
           <div style="display:flex; align-items:center; justify-content:space-between; margin-top:18px; gap:10px; flex-wrap:wrap;">
-            <div class="postlabel" style="margin:0;">Your media <span class="hint" style="font-weight:400; text-transform:none; letter-spacing:0;">— drag the ↑↓ arrows to reorder, or let the AI do it</span></div>
-            <button class="btn ghost" id="postNarrative" type="button" style="width:auto; margin:0; padding:8px 14px; font-size:13px;">✨ Order narratively</button>
+            <div class="postlabel" style="margin:0;">Your media <span class="hint" style="font-weight:400; text-transform:none; letter-spacing:0;">— drag ↑↓ to reorder, or let the AI do it</span></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn ghost" id="postSuggestText" type="button" style="width:auto; margin:0; padding:8px 14px; font-size:13px;" title="Generate a short on-photo text overlay for each photo, based on the post context.">✨ Suggest text overlays</button>
+              <button class="btn ghost" id="postNarrative" type="button" style="width:auto; margin:0; padding:8px 14px; font-size:13px;">✨ Order narratively</button>
+            </div>
           </div>
           <div id="postMediaList" style="margin-top:10px;"></div>
 
@@ -817,6 +832,8 @@
               <div class="postlabel">Live preview</div>
               <div id="postPreview"><span class="hint">Loading preview…</span></div>
               <div class="hint" style="margin-top:10px; text-align:center;">↑ How this post will look on <span id="activePlatformName">Instagram</span></div>
+              <!-- Download links to the prepared photos. Populated by renderPreview when in Post mode. -->
+              <div id="postDownloads" class="hint" style="margin-top:10px; text-align:center;"></div>
             </div>
             <div class="postcontrolscol">
               <div class="postsection">
@@ -1153,6 +1170,7 @@
           a: $("postAspect")?.value,
           e: $("postEnhance")?.value,
           c: $("postCrop")?.value,
+          f: $("postFont")?.value,
           items: postMedia.map((m) => ({ id: m.id, cap: m.caption || "" })),
         });
       }
@@ -1172,7 +1190,7 @@
               <span class="badge">${m.type === "video" ? "VIDEO" : i + 1}</span>
             </div>
             <div class="pmmain">
-              <input data-cap="${m.id}" type="text" placeholder="Optional text overlay on this photo — leave blank for none" value="${(m.caption || "").replace(/"/g, "&quot;")}" />
+              <input data-cap="${m.id}" type="text" placeholder="Optional text overlay — type yours, or click ✨ Suggest text overlays above" value="${(m.caption || "").replace(/"/g, "&quot;")}" />
               <div class="pmmeta">${m.file?.name || ""} · ${Math.round((m.file?.size || 0) / 1024)} KB</div>
             </div>
             <div class="pmactions">
@@ -1228,7 +1246,7 @@
           drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); addPostFiles(e.dataTransfer.files); };
           input.onchange = (e) => addPostFiles(e.target.files);
         }
-        ["postAspect", "postEnhance", "postCrop"].forEach((id) => {
+        ["postAspect", "postEnhance", "postCrop", "postFont"].forEach((id) => {
           const el = $(id); if (!el || el.dataset.wired) return;
           el.dataset.wired = "1";
           el.onchange = () => { postPreparedAt = null; };
@@ -1236,6 +1254,7 @@
         $("postBack").onclick = () => { goTo("page0"); };
         $("postContinue").onclick = () => preparePostAndContinue();
         $("postNarrative").onclick = () => narrativeOrderPostMedia();
+        $("postSuggestText").onclick = () => suggestPostOverlayText();
         renderPostMediaList();
       }
 
@@ -1279,6 +1298,51 @@
         }
       }
 
+      // Same /story endpoint as the narrative ordering, but here we USE the
+      // returned captions as on-photo text overlays. Order is preserved (we
+      // map captions back to each photo via the original index). Empty captions
+      // are left blank; existing user-typed captions are NOT overwritten unless
+      // the user confirms (we ask first).
+      async function suggestPostOverlayText() {
+        if (!postMedia.length) { $("postPrepareStatus").innerHTML = '<span class="hint">Add some photos first.</span>'; return; }
+        const hasManualCaptions = postMedia.some((m) => (m.caption || "").trim().length > 0);
+        if (hasManualCaptions && !confirm("Some photos already have a text overlay you typed. Replace them with AI suggestions?")) return;
+        const btn = $("postSuggestText");
+        btn.disabled = true; btn.textContent = "Thinking…";
+        $("postPrepareStatus").innerHTML = '<span>✨ Looking at your photos and writing punchy overlay text…</span>';
+        try {
+          const fd = new FormData();
+          postMedia.forEach((m) => fd.append("photos", m.file, m.file.name));
+          fd.append("meta", JSON.stringify({
+            reelContext: $("postContext")?.value || "Photo post — " + postMedia.length + " images.",
+            // landscape format → minimum AI pairing; we ignore pairing anyway.
+            format: "landscape",
+            // No prior contexts — we want fresh captions.
+            contexts: postMedia.map(() => ""),
+          }));
+          const r = await fetch("/story", { method: "POST", body: fd });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Generation failed");
+          // /story returns a sequence ordered by narrative. Each slide has
+          // indices: [k] and caption: "...". Apply caption to postMedia[k].
+          let applied = 0;
+          (j.sequence || []).forEach((g) => {
+            const k = (g.indices || [])[0];
+            if (typeof k === "number" && postMedia[k] && g.caption) {
+              postMedia[k].caption = String(g.caption).trim();
+              applied++;
+            }
+          });
+          postPreparedAt = null; // captions changed → re-prepare needed
+          renderPostMediaList();
+          $("postPrepareStatus").innerHTML = '<span style="color: var(--accent);">✓ Wrote ' + applied + ' text overlay' + (applied === 1 ? "" : "s") + '. Edit any of them inline, or clear to remove.</span>';
+        } catch (e) {
+          $("postPrepareStatus").innerHTML = '<span class="err">' + e.message + '</span>';
+        } finally {
+          btn.disabled = false; btn.textContent = "✨ Suggest text overlays";
+        }
+      }
+
       async function preparePostAndContinue() {
         if (!postMedia.length) { alert("Add at least one photo first."); return; }
         const sig = postSignature();
@@ -1295,6 +1359,7 @@
           fd.append("aspect", $("postAspect").value);
           fd.append("enhance", $("postEnhance").value);
           fd.append("crop", $("postCrop").value);
+          fd.append("font", $("postFont").value);
           // Stable order: send a JSON manifest of ids+captions so the server knows
           // which caption goes with which file (multer can reorder files otherwise).
           fd.append("manifest", JSON.stringify(postMedia.map((m) => ({ id: m.id, caption: m.caption || "" }))));
@@ -1727,7 +1792,9 @@
           const used = new Set();
           const built = [];
           (j.sequence || []).forEach((g) => {
-            const idxs = (g.indices || []).filter((k) => flat[k] && !used.has(k)).slice(0, 2);
+            // Defensive: force ONE photo per slide. AI is also instructed not
+            // to pair, but if it does we collapse to the first valid index.
+            const idxs = (g.indices || []).filter((k) => flat[k] && !used.has(k)).slice(0, 1);
             if (!idxs.length) return;
             idxs.forEach((k) => used.add(k));
             built.push({ photos: idxs.map((k) => flat[k]), caption: g.caption || "" });
@@ -2086,6 +2153,26 @@
           </div>`;
         }
         $("postPreview").innerHTML = html;
+        // Download links for prepared post photos. Each prepared URL points to
+        // a publicly-served file in public/uploads/post/{batchId}/, so the
+        // browser can download it directly with `download` attribute.
+        const dl = $("postDownloads");
+        if (dl) {
+          if (isPostMode()) {
+            const ready = postMedia.filter((m) => m.preparedUrl);
+            if (ready.length === 1) {
+              dl.innerHTML = '<a class="dl" href="' + ready[0].preparedUrl + '" download>↓ Download photo</a>';
+            } else if (ready.length > 1) {
+              const links = ready.map((m, i) => '<a class="dl" style="margin:0 8px;" href="' + m.preparedUrl + '" download>' + (i + 1) + '</a>').join("");
+              dl.innerHTML = '↓ Download: ' + links + '<span style="color: var(--muted);"> (' + ready.length + ' photos)</span>';
+            } else {
+              dl.innerHTML = '';
+            }
+          } else {
+            // Reel mode: keep a single MP4 download link.
+            dl.innerHTML = currentJobId ? '<a class="dl" href="/download/' + currentJobId + '" download>↓ Download MP4</a>' : '';
+          }
+        }
         // Carousel interaction (post mode only).
         if (isPostMode() && postMedia.length > 1) {
           const root = $("postPreview");
