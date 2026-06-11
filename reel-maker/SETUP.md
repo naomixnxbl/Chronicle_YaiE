@@ -1,8 +1,97 @@
 # Setup guide — WSTI Reel Maker
 
-This guide is for anyone — even if you've never touched a terminal before. Follow each step in order. **Don't skip anything.** Every command is copy-paste-able (click the little copy icon on the right of each code block on GitHub, or just select the text).
+There are **two ways** to set this up:
 
-If something doesn't work, scroll to **"When things go wrong"** at the bottom — most problems are listed there with the fix.
+- **🟢 Easy way (recommended)** — download the project, double-click two files. No commands to type. Jump to **"The easy way"** below.
+- **🔧 Manual way** — type each command yourself in the Terminal. Use this if the easy way fails or if you want to understand every step. Jump to **"The manual way (step by step)"** further down.
+
+Either way, **don't skip steps.** Every command in this guide is copy-paste-able.
+
+If something goes wrong, scroll to **"When things go wrong"** at the bottom — most problems are listed there with the fix.
+
+---
+
+## The easy way
+
+You need three things to start:
+
+1. A Mac (this method is macOS only — manual way works on any Mac/PC).
+2. An internet connection.
+3. About **20–30 minutes** (mostly waiting).
+
+### Step 1 — Download the project
+
+Open Safari (or any browser) and go to:
+
+```
+https://github.com/naomixnxbl/Chronicle_YaiE
+```
+
+Click the green **"Code"** button → **"Download ZIP"**.
+
+A file called `Chronicle_YaiE-main.zip` lands in your Downloads folder. **Double-click it** to unzip — you get a folder called `Chronicle_YaiE-main`.
+
+**Drag that folder to your Desktop** so it's easy to find. Open it — inside you'll see `install.command`, `start.command`, and a `reel-maker` folder.
+
+> 💡 If you'd rather use `git clone` than download a ZIP, see the manual way below — the rest of the steps are the same.
+
+### Step 2 — Double-click `install.command`
+
+Find `install.command` in the folder. **Double-click it.**
+
+⚠️ **The first time you double-click**, macOS might say *"install.command can't be opened because Apple cannot check it for malicious software."* This is normal for files from the internet. To fix:
+
+1. Click **OK** on the warning.
+2. Open **System Settings** → **Privacy & Security**.
+3. Scroll down — you'll see "install.command was blocked…". Click **"Open Anyway"**.
+4. Click **"Open"** when asked.
+
+A Terminal window opens automatically and shows a welcome banner. Press **Enter** to start.
+
+It then does everything automatically:
+
+- Installs Homebrew (if missing) — you'll be asked for your Mac password partway through.
+- Installs Node.js, ffmpeg, and git.
+- Downloads the app's libraries (~800 MB — the slowest part).
+- Creates a `.env` file and opens it in TextEdit for you.
+
+**Total time: about 10 minutes.** Don't close the window.
+
+### Step 3 — Paste your secret keys
+
+When TextEdit pops open with the `.env` file:
+
+```env
+OPENAI_API_KEY=PASTE_YOUR_KEY_HERE
+BLOTATO_API_KEY=PASTE_YOUR_KEY_HERE
+BLOTATO_LINKEDIN_ACCOUNT_ID=16494
+BLOTATO_INSTAGRAM_ACCOUNT_ID=38239
+BLOTATO_FACEBOOK_ACCOUNT_ID=24876
+JAMENDO_CLIENT_ID=c3e0222e
+```
+
+Replace **`PASTE_YOUR_KEY_HERE`** on the first two lines with your real keys:
+
+- **OPENAI_API_KEY** — get it from [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys). Starts with `sk-proj-…`
+- **BLOTATO_API_KEY** — get it from your Blotato dashboard at [https://blotato.com](https://blotato.com) → settings → API. Starts with `blt_…`
+
+Save (**Cmd + S**) and close TextEdit. Go back to the Terminal window and press **Enter** to finish.
+
+### Step 4 — Double-click `start.command`
+
+This launches the app. A Terminal window opens, the server starts, and your browser opens to `http://localhost:4321` after a few seconds.
+
+🎉 **Done.** Use the app like normal.
+
+**To stop the app**: close the Terminal window, or click into it and press **Ctrl + C**.
+
+**To start it again later**: just double-click `start.command`. That's it. You never need to do the install steps again unless you set up on a new laptop.
+
+---
+
+## The manual way (step by step)
+
+Use this if the easy way fails, you're on Windows, or you just want to understand every step. Everything below is for anyone — even if you've never touched a terminal before.
 
 ---
 
