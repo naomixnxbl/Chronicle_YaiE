@@ -1,0 +1,49 @@
+# Keep the image small. Anything matched here is NOT copied during docker build.
+
+# Node deps — installed fresh inside the container
+reel-maker/node_modules/
+**/node_modules/
+
+# Secrets — Railway sets these as env vars in its dashboard, not in the image
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Renders + uploads — written at runtime, persisted in /data volume
+reel-maker/out/
+reel-maker/public/uploads/
+reel-maker/public/uploads/**
+
+# Music tracks are user-supplied + heavy; they go into the /data/music volume
+# after deploy (see DEPLOY.md). Keep the README so the folder exists.
+reel-maker/public/music/*
+!reel-maker/public/music/README.txt
+
+# Build artifacts + caches
+reel-maker/.next/
+reel-maker/dist/
+reel-maker/build/
+.git/
+.github/
+
+# Other projects in this repo — only reel-maker ships in this container
+florapeutic-studio/
+photos_demo/
+*.pyc
+__pycache__/
+.venv/
+venv/
+
+# Editor / OS noise
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Documentation that doesn't need to be in the image
+SETUP.md
+DEPLOY.md
+README.md
+*.md
+!reel-maker/ARCHITECTURE.md
