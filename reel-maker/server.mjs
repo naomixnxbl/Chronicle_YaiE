@@ -292,6 +292,11 @@ app.post("/api/brand/logo", logoUpload.single("logo"), async (req, res) => {
       await sharp(req.file.buffer).rotate().resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true }).png({ compressionLevel: 9 }).toFile(outPath);
     }
     saveBrandPatch({ logoImage: `brand/${outName}`, useBuiltinMark: false });
+    // Invalidate the cached Remotion bundle so the next /render rebundles and
+    // picks up the new logo file. Without this, the bundle's `public/` snapshot
+    // is stale and the renderer 404s when fetching the new logo URL.
+    serveUrlPromise = null;
+    console.log(`Logo uploaded → ${outName}. Bundle cache invalidated; next render will rebuild it.`);
     res.json({ ok: true, logoImage: `brand/${outName}` });
   } catch (err) {
     console.error("logo upload failed:", err);
@@ -785,6 +790,60 @@ app.post("/post/refine", async (req, res) => {
 // ---- POST flow: prepare-photos endpoint ------------------------------------
 // The Post path (not Reel) uses this to auto-crop user photos to a target
 // platform aspect ratio with sharp's saliency-aware "attention" strategy, then
+// ---- Post-edit refine: tweak the Post-mode edit settings with plain English -
+// Body: { current: { aspect, enhance, crop, font, captions }, instruction }
+// Returns the updated edit state. The Post edit page calls this when the user
+// types into the "Tweak anything ✨" prompt box and clicks Apply.
+const POST_EDIT_SCHEMA = {
+  type: "object", additionalProperties: false,
+  properties: {
+    aspect: { type: "string", enum: ["square", "portrait", "story", "landscape"] },
+    enhance: { type: "string", enum: ["on", "off"] },
+    crop: { type: "string", enum: ["whole", "cover", "center"] },
+    font: { type: "string", enum: ["bold-display", "modern-sans", "editorial-serif", "handwritten", "stencil"] },
+    captions: { type: "array", items: { type: "string" } },
+    _note: { type: "string" },
+  },
+  required: ["aspect", "enhance", "crop", "font", "captions", "_note"],
+};
+app.post("/post/edit-refine", async (req, res) => {
+  try {
+    if (!openai) return res.status(400).json({ error: "Refine AI needs OPENAI_API_KEY in reel-maker/.env." });
+    const { current, instruction } = req.body || {};
+    if (!instruction || !current) return res.status(400).json({ error: "Missing instruction or current settings." });
+    const sys = `You adjust the photo-post edit settings for ${brand.name} based on a short instruction from the user.
+
+You are given the CURRENT edit state as JSON and the user's instruction. Return the COMPLETE updated state (same shape), changing ONLY what the instruction implies and keeping everything else byte-identical.
+
+Field guide:
+- aspect: "square" (1:1 — IG/LinkedIn/FB feed) | "portrait" (4:5 — Instagram-tall) | "story" (9:16 — Reels/Stories) | "landscape" (16:9 — LinkedIn/YouTube)
+- enhance: "on" (sharpen + colour pop) | "off" (keep original)
+- crop: "whole" (show whole photo with blurred backdrop fill) | "cover" (smart saliency-aware crop) | "center" (centred crop)
+- font: "bold-display" (Impact-style, uppercase, tight) | "modern-sans" (clean Helvetica, sentence case) | "editorial-serif" (Playfair / magazine-style) | "handwritten" (Marker Felt, warm) | "stencil" (chunky military)
+- captions: array of on-photo text overlays — one entry per photo, IN ORDER. Keep the SAME NUMBER of items as the input. Each caption is 2–5 words, punchy, lowercase-leaning or sentence case (NEVER Title Case Every Word). No emojis, no hashtags, no end punctuation. An empty string "" means no overlay on that photo.
+- Brand voice: ${brand.voice}
+
+If the user asks for something not controllable here (add/remove photos, change a logo, etc.), leave everything unchanged and explain briefly in "_note". Otherwise set "_note" to a one-line summary of what you changed.`;
+    const user = `CURRENT settings:\n${JSON.stringify(current, null, 2)}\n\nInstruction: ${instruction}`;
+    const r = await openai.chat.completions.create({
+      model: MODEL,
+      max_completion_tokens: 1200,
+      messages: [
+        { role: "system", content: sys },
+        { role: "user", content: user },
+      ],
+      response_format: { type: "json_schema", json_schema: { name: "post_edit", strict: true, schema: POST_EDIT_SCHEMA } },
+    });
+    const msg = r.choices?.[0]?.message;
+    if (msg?.refusal) throw new Error(msg.refusal);
+    if (!msg?.content) throw new Error("No response from model");
+    res.json(JSON.parse(msg.content));
+  } catch (err) {
+    console.error("Post edit refine failed:", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
 // gentle sharpen + colour pop and an optional caption overlay (SVG composite).
 // Output: a list of public URLs the user can then post to socials via /post.
 

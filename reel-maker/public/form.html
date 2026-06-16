@@ -660,7 +660,15 @@
           </div>
           <div id="postMediaList" style="margin-top:10px;"></div>
 
-          <div class="pagenav">
+          <!-- Plain-English tweak box: changes aspect / fit / font / all captions in one shot via AI -->
+          <div class="captionRefine" style="margin-top:22px; padding-top:18px; border-top:1px solid var(--line);">
+            <label>Tweak anything ✨ <span class="hint" style="font-weight:400">(plain English — affects aspect, fit, font, all captions at once)</span></label>
+            <textarea id="postEditRefineBox" rows="2" placeholder="e.g. switch to editorial serif · make captions shorter and more vibey · use square aspect · turn enhance off · rewrite caption 2 to 'hands on the keys'"></textarea>
+            <button class="btn ghost" id="postEditRefineBtn" type="button">Apply changes</button>
+            <div class="hint" id="postEditRefineNote"></div>
+          </div>
+
+          <div class="pagenav" style="margin-top:18px;">
             <button class="navbtn" id="postBack" type="button">← Back</button>
             <button class="btn" id="postContinue" type="button" style="width:auto">Continue to post →</button>
           </div>
@@ -1255,6 +1263,7 @@
         $("postContinue").onclick = () => preparePostAndContinue();
         $("postNarrative").onclick = () => narrativeOrderPostMedia();
         $("postSuggestText").onclick = () => suggestPostOverlayText();
+        $("postEditRefineBtn").onclick = () => refinePostEdit();
         renderPostMediaList();
       }
 
@@ -1340,6 +1349,64 @@
           $("postPrepareStatus").innerHTML = '<span class="err">' + e.message + '</span>';
         } finally {
           btn.disabled = false; btn.textContent = "✨ Suggest text overlays";
+        }
+      }
+
+      // Plain-English refine box on the Post edit page. The AI can change any
+      // combination of aspect, enhance, crop, font, and per-photo caption text
+      // in a single instruction. We send the current state + instruction; the
+      // server returns the merged state and we apply it to the form.
+      async function refinePostEdit() {
+        const instruction = ($("postEditRefineBox").value || "").trim();
+        if (!instruction) { $("postEditRefineBox").focus(); return; }
+        if (!postMedia.length) {
+          $("postEditRefineNote").innerHTML = '<span class="err">Add some photos first.</span>';
+          return;
+        }
+        const btn = $("postEditRefineBtn");
+        btn.disabled = true; btn.textContent = "✨ Thinking…";
+        $("postEditRefineNote").textContent = "";
+        try {
+          const current = {
+            aspect: $("postAspect").value,
+            enhance: $("postEnhance").value,
+            crop: $("postCrop").value,
+            font: $("postFont").value,
+            captions: postMedia.map((m) => m.caption || ""),
+          };
+          const r = await fetch("/post/edit-refine", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ current, instruction }),
+          });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "Refine failed");
+          // Apply the returned settings (only when present + different from current).
+          let changes = [];
+          if (j.aspect && j.aspect !== current.aspect) { $("postAspect").value = j.aspect; changes.push("aspect"); }
+          if (j.enhance && j.enhance !== current.enhance) { $("postEnhance").value = j.enhance; changes.push("enhance"); }
+          if (j.crop && j.crop !== current.crop) { $("postCrop").value = j.crop; changes.push("fit"); }
+          if (j.font && j.font !== current.font) { $("postFont").value = j.font; changes.push("font"); }
+          if (Array.isArray(j.captions)) {
+            let capChanged = 0;
+            j.captions.forEach((c, i) => {
+              const cleaned = String(c || "").trim();
+              if (postMedia[i] && postMedia[i].caption !== cleaned) {
+                postMedia[i].caption = cleaned;
+                capChanged++;
+              }
+            });
+            if (capChanged) changes.push(capChanged + " caption" + (capChanged === 1 ? "" : "s"));
+          }
+          postPreparedAt = null; // changes → re-prepare needed
+          renderPostMediaList();
+          const note = j._note ? j._note : (changes.length ? "Updated: " + changes.join(", ") : "No changes applied");
+          $("postEditRefineNote").innerHTML = '<span style="color: var(--accent);">✓ ' + note + '</span>';
+          $("postEditRefineBox").value = "";
+        } catch (e) {
+          $("postEditRefineNote").innerHTML = '<span class="err">' + e.message + '</span>';
+        } finally {
+          btn.disabled = false; btn.textContent = "Apply changes";
         }
       }
 
